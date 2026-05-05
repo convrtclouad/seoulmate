@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { buildDebtMatrix } from "@/lib/utils/expense-splitter";
 import { tap, success } from "@/lib/utils/haptics";
@@ -13,6 +14,41 @@ interface DebtMatrixProps {
   onToggleSettle?: (debtorId: string, creditorId: string) => void;
   /** @deprecated use onToggleSettle */
   onSettle?: (debtorId: string, creditorId: string) => void;
+}
+
+/* ── Confetti burst ── */
+const CONFETTI_COLORS = ["#E87060", "#5B8862", "#8B7AB8", "#E8A800", "#4A9592", "#F4A590", "#6BA3BE"];
+const PARTICLES = Array.from({ length: 14 }, (_, i) => {
+  const angle = (i / 14) * 360;
+  const dist  = 38 + (i % 3) * 18;
+  const tx    = Math.round(Math.cos((angle * Math.PI) / 180) * dist);
+  const ty    = Math.round(Math.sin((angle * Math.PI) / 180) * dist);
+  const size  = 5 + (i % 3);
+  const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+  const delay = i * 28;
+  return { tx, ty, size, color, delay };
+});
+
+function ConfettiBurst() {
+  return (
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 20, overflow: "visible" }}>
+      {PARTICLES.map((p, i) => (
+        <div key={i} style={{
+          position:       "absolute",
+          right:          14,
+          top:            "50%",
+          width:          p.size,
+          height:         p.size,
+          borderRadius:   i % 2 === 0 ? "50%" : 2,
+          background:     p.color,
+          animation:      `confettiBurst 0.65s ease-out forwards`,
+          animationDelay: `${p.delay}ms`,
+          "--tx": `${p.tx}px`,
+          "--ty": `${p.ty - 20}px`,
+        } as React.CSSProperties} />
+      ))}
+    </div>
+  );
 }
 
 function Bubble({ name }: { name: string }) {
@@ -36,9 +72,25 @@ function DebtCard({
   isSettled: boolean;
   onToggle: () => void;
 }) {
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  function handleToggle() {
+    if (!isSettled) {
+      success();
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 900);
+    } else {
+      tap();
+    }
+    onToggle();
+  }
+
   return (
-    <div className={`rounded-3xl bg-surface p-4 flex items-center gap-3 transition-all ${isSettled ? "opacity-50" : ""}`}
-         style={{ boxShadow: "var(--shadow-card)" }}>
+    <div
+      className={`rounded-3xl bg-surface p-4 flex items-center gap-3 transition-all relative ${isSettled ? "opacity-50" : ""}`}
+      style={{ boxShadow: "var(--shadow-card)", overflow: "visible" }}
+    >
+      {showConfetti && <ConfettiBurst />}
       <Bubble name={debtorLabel} />
       <ArrowRight className="h-4 w-4 text-ink-faint shrink-0" />
       <Bubble name={creditorLabel} />
@@ -49,9 +101,8 @@ function DebtCard({
         </p>
         {isSettled && <p className="text-[10px] text-sage-600 font-bold mt-0.5">✓ 已结清</p>}
       </div>
-      {/* Settle toggle button */}
       <button
-        onClick={() => { isSettled ? tap() : success(); onToggle(); }}
+        onClick={handleToggle}
         className={`shrink-0 h-10 w-10 rounded-2xl flex items-center justify-center transition-all ${
           isSettled
             ? "bg-sage-100 text-sage-600"
@@ -83,25 +134,30 @@ export function DebtMatrix({ expenses, profiles, currentUserId, settled = new Se
     (d) => d.debtorId !== currentUserId && d.creditorId !== currentUserId
   );
 
-  const getName = (p?: Profile | null) => p?.display_name ?? "?";
-  const isSettled = (debtorId: string, creditorId: string) => settled.has(`${debtorId}→${creditorId}`);
-
-  const pendingCount = debts.filter((d) => !isSettled(d.debtorId, d.creditorId)).length;
-  const allSettled   = pendingCount === 0 && debts.length > 0;
+  const getName    = (p?: Profile | null) => p?.display_name ?? "?";
+  const isSettled  = (debtorId: string, creditorId: string) => settled.has(`${debtorId}→${creditorId}`);
+  const pendingCnt = debts.filter((d) => !isSettled(d.debtorId, d.creditorId)).length;
+  const allSettled = pendingCnt === 0 && debts.length > 0;
 
   return (
     <div className="space-y-4 pb-8">
-      {/* Summary chip */}
+      <style>{`
+        @keyframes confettiBurst {
+          0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+          80%  { opacity: 0.7; }
+          100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+      `}</style>
+
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-muted font-medium">
-          {debts.length} 笔债务 · {debts.length - pendingCount} 笔已结清
+          {debts.length} 笔债务 · {debts.length - pendingCnt} 笔已结清
         </p>
         {allSettled && (
           <span className="text-xs font-bold text-sage-600 bg-sage-100 rounded-full px-3 py-1">🎉 全部结清</span>
         )}
       </div>
 
-      {/* 我需要还款 */}
       {iOwe.length > 0 && (
         <div>
           <p className="text-xs font-bold text-petal-400 uppercase tracking-wider mb-2">💸 我需要还款</p>
@@ -120,7 +176,6 @@ export function DebtMatrix({ expenses, profiles, currentUserId, settled = new Se
         </div>
       )}
 
-      {/* 别人欠我 */}
       {owedMe.length > 0 && (
         <div>
           <p className="text-xs font-bold text-sage-600 uppercase tracking-wider mb-2">✅ 别人欠我</p>
@@ -139,7 +194,6 @@ export function DebtMatrix({ expenses, profiles, currentUserId, settled = new Se
         </div>
       )}
 
-      {/* 成员之间 */}
       {others.length > 0 && (
         <div>
           <p className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">👥 成员之间</p>
@@ -159,7 +213,7 @@ export function DebtMatrix({ expenses, profiles, currentUserId, settled = new Se
       )}
 
       <p className="text-center text-[10px] text-ink-faint pt-2">
-        点击右侧 ✓ 按钮标记已结清 · 再次点击可取消
+        点击 ✓ 标记已结清 · 结清时会有彩纸庆祝 🎊
       </p>
     </div>
   );

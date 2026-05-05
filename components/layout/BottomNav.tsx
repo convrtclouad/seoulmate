@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, BookMarked, Receipt, BookOpen, CheckSquare, Heart } from "lucide-react";
+import { CalendarDays, BookMarked, Receipt, BookOpen, CheckSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const NAV_ITEMS = [
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: "/expenses", label: "记账", icon: Receipt,      color: "text-petal-400"   },
   { href: "/journal",  label: "日志", icon: BookOpen,     color: "text-lavender"    },
   { href: "/prepare",  label: "准备", icon: CheckSquare,  color: "text-mist-400"    },
-  { href: "/wishlist", label: "打卡", icon: Heart,        color: "text-petal-400"   },
+  { href: "/members",  label: "成员", icon: Users,        color: "text-sage"        },
 ];
 
 export function BottomNav() {
