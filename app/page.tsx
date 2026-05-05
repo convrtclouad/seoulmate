@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Root redirects to /home; actual dashboard is rendered by (dashboard)/page.tsx
+// Root → intro (intro page redirects to /home if user already selected)
 export default function RootPage() {
-  redirect("/home");
+  redirect("/intro");
 }

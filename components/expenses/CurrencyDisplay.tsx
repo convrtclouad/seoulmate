@@ -53,9 +53,9 @@ export function ExchangeRateBadge() {
   if (!rate) return null;
 
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary-50 border border-secondary-100 px-3 py-1">
-      <TrendingUp className="h-3 w-3 text-secondary-600" />
-      <span className="text-xs font-medium text-secondary-700">
+    <div className="inline-flex items-center gap-1.5 rounded-full bg-forest-mist border border-forest-pale px-3 py-1">
+      <TrendingUp className="h-3 w-3 text-forest-mid" />
+      <span className="text-xs font-medium text-forest">
         1 MYR = {(1 / rate).toLocaleString("ko-KR", { maximumFractionDigits: 0 })} KRW
       </span>
     </div>

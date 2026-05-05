@@ -146,7 +146,7 @@ export function VoiceHelper() {
                 className={cn(
                   "h-4 w-4 transition-colors",
                   favorites.has(phrase.id)
-                    ? "fill-korean-gold text-korean-gold"
+                    ? "fill-amber-400 text-amber-400"
                     : "text-gray-200"
                 )}
               />

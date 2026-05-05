@@ -55,29 +55,32 @@ export default function ExpensesPage() {
 
       <div className="px-4 py-4 space-y-4 pb-safe">
         {/* Summary card */}
-        <Card className="bg-korean-gradient text-white" padding="lg">
-          <p className="text-white/70 text-xs font-semibold uppercase tracking-widest">
-            Total Trip Spend
-          </p>
-          <div className="mt-1 flex items-end gap-3">
-            <span className="text-3xl font-black">
-              ₩{totalKrw.toLocaleString("ko-KR")}
-            </span>
+        <div className="rounded-3xl bg-forest px-5 py-4 relative overflow-hidden">
+          <div className="absolute -top-6 -right-6 h-20 w-20 rounded-full bg-forest-light/50" />
+          <div className="relative z-10">
+            <p className="text-forest-pale text-xs font-semibold uppercase tracking-widest">
+              Total Trip Spend
+            </p>
+            <div className="mt-1 flex items-end gap-3">
+              <span className="text-3xl font-black text-white">
+                ₩{totalKrw.toLocaleString("ko-KR")}
+              </span>
+            </div>
+            <div className="mt-2">
+              <CurrencyDisplay
+                amountKrw={totalKrw}
+                showToggle={false}
+                className="text-forest-pale text-sm"
+              />
+            </div>
+            <div className="mt-3">
+              <ExchangeRateBadge />
+            </div>
           </div>
-          <div className="mt-2">
-            <CurrencyDisplay
-              amountKrw={totalKrw}
-              showToggle={false}
-              className="text-white/80 text-sm"
-            />
-          </div>
-          <div className="mt-3">
-            <ExchangeRateBadge />
-          </div>
-        </Card>
+        </div>
 
         {/* Tab switcher */}
-        <div className="flex rounded-2xl bg-gray-100 p-1 gap-1">
+        <div className="flex rounded-2xl bg-neutral-100 p-1 gap-1">
           {(["expenses", "debts"] as Tab[]).map((t) => (
             <button
               key={t}
@@ -85,7 +88,7 @@ export default function ExpensesPage() {
               className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
                 tab === t
                   ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500"
+                  : "text-neutral-500"
               }`}
             >
               {t === "expenses" ? (

@@ -139,7 +139,7 @@ export function ExpenseForm({
           />
         </div>
         {myrPreview && (
-          <p className="mt-1.5 text-xs text-secondary-600 font-medium">
+          <p className="mt-1.5 text-xs text-forest-mid font-medium">
             ≈ {myrPreview} MYR
           </p>
         )}
@@ -193,7 +193,7 @@ export function ExpenseForm({
                 className={cn(
                   "flex items-center gap-2 rounded-xl px-3 py-2 border transition-all text-sm font-medium",
                   selected
-                    ? "bg-secondary-500 text-white border-secondary-500"
+                    ? "bg-forest text-white border-forest"
                     : "bg-white text-gray-500 border-gray-200 opacity-60"
                 )}
               >
@@ -235,8 +235,8 @@ export function ExpenseForm({
       </div>
 
       {/* OCR hint */}
-      <div className="rounded-xl bg-korean-cream border border-korean-gold/30 px-4 py-3 flex items-center gap-3">
-        <Camera className="h-5 w-5 text-korean-gold shrink-0" />
+      <div className="rounded-xl bg-forest-mist border border-forest-pale px-4 py-3 flex items-center gap-3">
+        <Camera className="h-5 w-5 text-forest-mid shrink-0" />
         <div>
           <p className="text-xs font-semibold text-gray-700">Receipt Scan</p>
           <p className="text-xs text-gray-400">Coming soon — auto-fill from photo</p>

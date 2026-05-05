@@ -105,7 +105,7 @@ function ExpenseCard({
         {mySplit && (
           <div className={cn(
             "mt-1 flex items-center justify-end gap-1",
-            mySplit.is_settled ? "text-secondary-500" : iMyPaid ? "text-secondary-600" : "text-red-500"
+            mySplit.is_settled ? "text-forest" : iMyPaid ? "text-forest-mid" : "text-red-500"
           )}>
             {mySplit.is_settled && <CheckCircle2 className="h-3 w-3" />}
             <span className="text-xs font-medium">

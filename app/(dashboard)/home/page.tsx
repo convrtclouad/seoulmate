@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   Receipt, CalendarDays, Wand2, MapPin,
-  ChevronRight, Flame, Star,
+  ChevronRight, TrendingUp,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { WeatherWidget } from "@/components/weather/WeatherWidget";
@@ -11,31 +12,34 @@ import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useSchedule } from "@/lib/hooks/useSchedule";
 import { formatKrw, formatMyr } from "@/lib/utils/currency";
 import { isToday, parseISO, format } from "date-fns";
-import { Avatar } from "@/components/ui/Avatar";
 
 const TRIP_ID = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
-const CURRENT_USER = {
-  id:           "user-1",
-  display_name: "Bryan",
-  avatar_url:   null,
-  phone:        null,
-  last_lat:     null,
-  last_lng:     null,
-  last_checkin: null,
-  created_at:   "",
-  updated_at:   "",
-};
 
 const QUICK_LINKS = [
-  { href: "/expenses", label: "Add Expense",  icon: Receipt,      color: "bg-pink-50 text-pink-500" },
-  { href: "/schedule", label: "Schedule",     icon: CalendarDays, color: "bg-purple-50 text-purple-500" },
-  { href: "/ai-tools", label: "AI Tools",     icon: Wand2,        color: "bg-orange-50 text-orange-500" },
-  { href: "/map",      label: "Map",          icon: MapPin,       color: "bg-blue-50 text-blue-500" },
+  { href: "/expenses", label: "Expenses",  icon: Receipt,      bg: "bg-emerald-50",   icon_color: "text-emerald-600" },
+  { href: "/schedule", label: "Schedule",  icon: CalendarDays, bg: "bg-violet-50",    icon_color: "text-violet-600" },
+  { href: "/ai-tools", label: "AI Tools",  icon: Wand2,        bg: "bg-amber-50",     icon_color: "text-amber-600" },
+  { href: "/map",      label: "Map",       icon: MapPin,       bg: "bg-sky-50",       icon_color: "text-sky-600" },
 ];
+
+const EMOJI_CATEGORY: Record<string, string> = {
+  food: "🍜", transport: "🚇", shopping: "🛍️", accommodation: "🏨",
+  attraction: "🎡", activity: "🎭", other: "💳",
+};
 
 export default function HomePage() {
   const { data: expenses = [] } = useExpenses(TRIP_ID);
   const { data: activities = [] } = useSchedule(TRIP_ID);
+
+  const [userName, setUserName]   = useState("Traveller");
+  const [userEmoji, setUserEmoji] = useState("✈️");
+
+  useEffect(() => {
+    const name  = localStorage.getItem("seoulmate_user_name");
+    const emoji = localStorage.getItem("seoulmate_user_emoji");
+    if (name)  setUserName(name);
+    if (emoji) setUserEmoji(emoji);
+  }, []);
 
   const totalKrw = expenses.reduce((s, e) => s + e.amount_krw, 0);
   const totalMyr = expenses.reduce((s, e) => s + (e.amount_myr ?? 0), 0);
@@ -45,84 +49,103 @@ export default function HomePage() {
   );
 
   const recentExpenses = expenses.slice(0, 3);
+  const today = format(new Date(), "EEEE, d MMM");
 
   return (
-    <div className="flex flex-col min-h-dvh">
-      {/* Hero header */}
-      <div className="bg-korean-gradient px-5 pt-safe pb-6">
-        <div className="flex items-center justify-between mt-3 mb-4">
+    <div className="flex flex-col min-h-dvh bg-bg">
+      {/* ── Header ── */}
+      <div className="bg-surface px-5 pt-safe pb-4 border-b border-neutral-100">
+        <div className="flex items-center justify-between mt-2">
           <div>
-            <p className="text-white/70 text-sm">
-              {format(new Date(), "EEEE, d MMMM")}
-            </p>
-            <h1 className="text-2xl font-black text-white">
-              안녕하세요 👋
+            <p className="text-xs text-neutral-400 font-medium">{today}</p>
+            <h1 className="text-2xl font-black text-gray-900 mt-0.5">
+              Hey, {userName}! {userEmoji}
             </h1>
-            <p className="text-white/80 text-sm">Seoul, South Korea</p>
+            <p className="text-sm text-neutral-500">Seoul, South Korea 🇰🇷</p>
           </div>
-          <Avatar profile={CURRENT_USER} size="lg" />
-        </div>
 
-        {/* Spend summary */}
-        <div className="rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 px-4 py-3">
-          <p className="text-white/70 text-xs font-semibold uppercase tracking-widest">
-            Total Trip Spend
-          </p>
-          <p className="text-3xl font-black text-white mt-0.5">
-            {formatKrw(totalKrw)}
-          </p>
-          {totalMyr > 0 && (
-            <p className="text-white/70 text-sm">≈ {formatMyr(totalMyr)} MYR</p>
-          )}
+          {/* Avatar circle */}
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-forest to-forest-mid flex items-center justify-center text-xl shadow-sm">
+            {userEmoji}
+          </div>
         </div>
       </div>
 
-      <div className="px-4 py-4 space-y-6 pb-safe -mt-3">
-        {/* Quick links */}
-        <div className="grid grid-cols-4 gap-3">
-          {QUICK_LINKS.map(({ href, label, icon: Icon, color }) => (
+      <div className="px-4 py-4 space-y-5 pb-safe">
+        {/* ── Spend summary card ── */}
+        <div className="rounded-3xl bg-forest px-5 py-4 relative overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-forest-light/50" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-forest-light/40" />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-forest-pale text-xs font-semibold uppercase tracking-widest">
+                Total Trip Spend
+              </p>
+              <div className="flex items-center gap-1 bg-forest-light/50 rounded-full px-2.5 py-1">
+                <TrendingUp className="h-3 w-3 text-forest-soft" />
+                <span className="text-forest-soft text-xs font-bold">
+                  {expenses.length} items
+                </span>
+              </div>
+            </div>
+            <p className="text-4xl font-black text-white tracking-tight">
+              {formatKrw(totalKrw)}
+            </p>
+            {totalMyr > 0 && (
+              <p className="text-forest-pale text-sm mt-1">
+                ≈ {formatMyr(totalMyr)} MYR
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Quick links ── */}
+        <div className="grid grid-cols-4 gap-2">
+          {QUICK_LINKS.map(({ href, label, icon: Icon, bg, icon_color }) => (
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center gap-1.5 tap-target"
+              className="flex flex-col items-center gap-2 tap-target"
             >
-              <div className={`rounded-2xl p-3.5 ${color}`}>
-                <Icon className="h-5 w-5" />
+              <div className={`rounded-2xl p-3.5 ${bg} w-full flex justify-center`}>
+                <Icon className={`h-5 w-5 ${icon_color}`} />
               </div>
-              <span className="text-[10px] font-semibold text-gray-500 text-center leading-tight">
+              <span className="text-[10px] font-semibold text-neutral-500 text-center leading-tight">
                 {label}
               </span>
             </Link>
           ))}
         </div>
 
-        {/* Weather */}
+        {/* ── Weather ── */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2.5">
             <h2 className="section-title">Seoul Weather</h2>
           </div>
           <WeatherWidget />
         </div>
 
-        {/* Today's activities */}
+        {/* ── Today's plan ── */}
         {todaysActivities.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2.5">
               <h2 className="section-title">Today&apos;s Plan</h2>
-              <Link href="/schedule" className="text-xs text-primary-500 font-semibold flex items-center gap-0.5">
+              <Link href="/schedule" className="text-xs text-forest font-semibold flex items-center gap-0.5">
                 See all <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
             <div className="space-y-2">
               {todaysActivities.slice(0, 3).map((act) => (
                 <Card key={act.id} className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-                    <CalendarDays className="h-5 w-5 text-primary-400" />
+                  <div className="h-10 w-10 rounded-xl bg-forest-mist flex items-center justify-center shrink-0">
+                    <CalendarDays className="h-5 w-5 text-forest-mid" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-gray-900 truncate">{act.title}</p>
                     {act.start_time && (
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-neutral-400">
                         {format(parseISO(`2000-01-01T${act.start_time}`), "h:mm a")}
                         {act.place_name && ` · ${act.place_name}`}
                       </p>
@@ -134,12 +157,12 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Recent expenses */}
+        {/* ── Recent expenses ── */}
         {recentExpenses.length > 0 && (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2.5">
               <h2 className="section-title">Recent Expenses</h2>
-              <Link href="/expenses" className="text-xs text-primary-500 font-semibold flex items-center gap-0.5">
+              <Link href="/expenses" className="text-xs text-forest font-semibold flex items-center gap-0.5">
                 See all <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -147,12 +170,12 @@ export default function HomePage() {
               {recentExpenses.map((exp) => (
                 <Card key={exp.id} className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="h-8 w-8 rounded-xl bg-pink-50 flex items-center justify-center shrink-0">
-                      <Flame className="h-4 w-4 text-pink-400" />
+                    <div className="h-9 w-9 rounded-xl bg-neutral-100 flex items-center justify-center text-lg shrink-0">
+                      {EMOJI_CATEGORY[exp.category ?? "other"] ?? "💳"}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-800 truncate">{exp.title}</p>
-                      <p className="text-xs text-gray-400">{exp.expense_date}</p>
+                      <p className="text-xs text-neutral-400">{exp.expense_date}</p>
                     </div>
                   </div>
                   <span className="currency-krw whitespace-nowrap">
@@ -164,15 +187,15 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Empty hero */}
+        {/* ── Empty state ── */}
         {expenses.length === 0 && activities.length === 0 && (
           <Card className="text-center py-10">
             <div className="text-5xl mb-3">🇰🇷</div>
             <p className="font-bold text-gray-800 text-lg">Welcome to SeoulMate!</p>
-            <p className="text-sm text-gray-400 mt-2 max-w-xs mx-auto">
-              Start by adding your first activity or expense, then invite your travel buddies.
+            <p className="text-sm text-neutral-400 mt-2 max-w-xs mx-auto leading-relaxed">
+              Start by adding your first activity or expense,<br />then invite your travel crew.
             </p>
-            <div className="flex gap-3 justify-center mt-5">
+            <div className="flex gap-3 justify-center mt-6">
               <Link href="/schedule" className="btn-primary text-sm">
                 <CalendarDays className="h-4 w-4" />
                 Plan Trip
@@ -185,20 +208,23 @@ export default function HomePage() {
           </Card>
         )}
 
-        {/* Korean phrases teaser */}
-        <Card className="bg-gradient-to-r from-korean-red/5 to-primary-50 border border-primary-100">
+        {/* ── Korean phrase card ── */}
+        <div className="rounded-2xl bg-surface shadow-card border border-forest-pale/60 p-4">
           <div className="flex items-center gap-3">
             <div className="text-3xl">🗣️</div>
             <div className="flex-1">
-              <p className="font-bold text-gray-800 text-sm">Korean Phrase of the Day</p>
-              <p className="text-xl font-black text-primary-500 mt-0.5">감사합니다</p>
-              <p className="text-xs text-gray-400">Gamsahamnida · Thank you</p>
+              <p className="font-semibold text-gray-800 text-sm">Korean Phrase</p>
+              <p className="text-2xl font-black text-forest mt-0.5">감사합니다</p>
+              <p className="text-xs text-neutral-400">Gamsahamnida · Thank you</p>
             </div>
-            <Link href="/ai-tools" className="shrink-0">
-              <Star className="h-5 w-5 text-korean-gold" />
+            <Link
+              href="/ai-tools"
+              className="shrink-0 bg-forest-mist rounded-xl px-3 py-2 text-xs font-bold text-forest"
+            >
+              More →
             </Link>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

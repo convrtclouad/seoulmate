@@ -7,6 +7,7 @@
   --bottom-nav-height: 4rem;
   --header-height: 3.5rem;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
 }
 
 /* ─── Base Reset ────────────────────────────────────────────────────────────── */
@@ -17,18 +18,15 @@
 
   html {
     @apply scroll-smooth;
-    /* Prevent overscroll bounce on iOS */
     overscroll-behavior: none;
   }
 
   body {
-    @apply bg-korean-cream text-gray-900 antialiased;
-    /* Mobile viewport fix */
+    @apply bg-bg text-gray-900 antialiased;
     min-height: 100dvh;
     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
   }
 
-  /* Smooth scrolling for main content */
   main {
     @apply overflow-y-auto;
   }
@@ -41,10 +39,15 @@
     padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 1rem);
   }
 
-  /* Korean-style gradient text */
+  /* Safe top padding for notch */
+  .pt-safe {
+    padding-top: calc(var(--safe-area-top) + 1rem);
+  }
+
+  /* Forest green gradient text */
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #CD2E3A, #ec4899);
+    background-image: linear-gradient(135deg, #1B4332, #40916C);
   }
 
   /* Glassmorphism card */
@@ -66,7 +69,7 @@
     background: linear-gradient(
       90deg,
       rgba(255,255,255,0) 0%,
-      rgba(255,255,255,0.4) 50%,
+      rgba(255,255,255,0.6) 50%,
       rgba(255,255,255,0) 100%
     );
     background-size: 200% 100%;
@@ -82,48 +85,58 @@
 /* ─── Component Layer ───────────────────────────────────────────────────────── */
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-primary-500
-           px-5 py-3 text-sm font-semibold text-white shadow-glow
-           transition-all duration-200 active:scale-95
-           hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl
+           bg-forest text-white
+           px-5 py-3 text-sm font-semibold
+           shadow-sm transition-all duration-200 active:scale-95
+           hover:bg-forest-light disabled:opacity-50 disabled:cursor-not-allowed
            tap-target;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-2xl
-           border border-primary-200 bg-white
-           px-5 py-3 text-sm font-semibold text-primary-600
+           border border-forest-pale bg-white
+           px-5 py-3 text-sm font-semibold text-forest
            transition-all duration-200 active:scale-95
-           hover:bg-primary-50 disabled:opacity-50 tap-target;
+           hover:bg-forest-mist disabled:opacity-50 tap-target;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-xl
-           px-4 py-2 text-sm font-medium text-gray-600
-           transition-all duration-200 active:scale-95 hover:bg-gray-100 tap-target;
+           px-4 py-2 text-sm font-medium text-neutral-600
+           transition-all duration-200 active:scale-95
+           hover:bg-neutral-100 tap-target;
   }
 
   .card {
-    @apply rounded-2xl bg-white shadow-card p-4;
+    @apply rounded-2xl bg-surface shadow-card p-4;
   }
 
   .card-hover {
-    @apply card transition-shadow duration-200 hover:shadow-card-hover;
+    @apply card transition-shadow duration-200 hover:shadow-card-hover cursor-pointer;
   }
 
   .input {
-    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3
-           text-sm text-gray-900 placeholder-gray-400
-           focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100
+    @apply w-full rounded-xl border border-neutral-200 bg-white px-4 py-3
+           text-sm text-gray-900 placeholder-neutral-400
+           focus:border-forest-mid focus:outline-none focus:ring-2 focus:ring-forest-mist
            transition-all duration-200;
   }
 
   .label {
-    @apply block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5;
+    @apply block text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5;
   }
 
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply badge bg-forest-mist text-forest;
+  }
+
+  .badge-soft {
+    @apply badge bg-neutral-100 text-neutral-600;
   }
 
   .section-title {
@@ -131,21 +144,21 @@
   }
 
   .page-header {
-    @apply sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-gray-100
+    @apply sticky top-0 z-40 bg-surface/90 backdrop-blur-sm border-b border-neutral-100
            px-4 h-14 flex items-center justify-between;
   }
 
-  /* KRW / MYR pill badges */
+  /* Currency pill badges */
   .currency-krw {
-    @apply badge bg-korean-red/10 text-korean-red;
+    @apply badge bg-forest-mist text-forest font-semibold;
   }
 
   .currency-myr {
-    @apply badge bg-secondary-100 text-secondary-700;
+    @apply badge bg-blue-50 text-blue-600 font-semibold;
   }
 
   /* Timeline connector line */
   .timeline-line {
-    @apply absolute left-5 top-10 bottom-0 w-0.5 bg-gradient-to-b from-primary-200 to-transparent;
+    @apply absolute left-5 top-10 bottom-0 w-0.5 bg-gradient-to-b from-forest-pale to-transparent;
   }
 }

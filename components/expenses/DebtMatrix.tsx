@@ -83,7 +83,7 @@ export function DebtMatrix({
       {/* Owed to me */}
       {owedMe.length > 0 && (
         <div>
-          <p className="text-xs font-bold text-secondary-500 uppercase tracking-widest mb-2">
+          <p className="text-xs font-bold text-forest uppercase tracking-widest mb-2">
             Owed to you
           </p>
           <div className="space-y-2">
@@ -98,10 +98,10 @@ export function DebtMatrix({
                   </p>
                   <CurrencyDisplay
                     amountKrw={debt.amountKrw}
-                    className="!text-secondary-600"
+                    className="!text-forest-mid"
                   />
                 </div>
-                <CheckCircle2 className="h-5 w-5 text-secondary-300 shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-forest-soft shrink-0" />
               </Card>
             ))}
           </div>
