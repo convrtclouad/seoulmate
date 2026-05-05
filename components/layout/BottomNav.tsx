@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, BookMarked, Receipt, BookOpen, CheckSquare, Users } from "lucide-react";
+import { CalendarDays, BookMarked, Receipt, BookOpen, CheckSquare, Heart } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const NAV_ITEMS = [
-  { href: "/home",     label: "行程", icon: CalendarDays, color: "text-sage" },
-  { href: "/bookings", label: "预订", icon: BookMarked,   color: "text-ginger-500" },
-  { href: "/expenses", label: "记账", icon: Receipt,      color: "text-petal-400" },
-  { href: "/journal",  label: "日志", icon: BookOpen,     color: "text-lavender" },
-  { href: "/prepare",  label: "准备", icon: CheckSquare,  color: "text-mist-400" },
-  { href: "/members",  label: "成员", icon: Users,        color: "text-ink-mid" },
+  { href: "/home",     label: "行程", icon: CalendarDays, color: "text-sage"        },
+  { href: "/bookings", label: "预订", icon: BookMarked,   color: "text-ginger-500"  },
+  { href: "/expenses", label: "记账", icon: Receipt,      color: "text-petal-400"   },
+  { href: "/journal",  label: "日志", icon: BookOpen,     color: "text-lavender"    },
+  { href: "/prepare",  label: "准备", icon: CheckSquare,  color: "text-mist-400"    },
+  { href: "/wishlist", label: "打卡", icon: Heart,        color: "text-petal-400"   },
 ];
 
 export function BottomNav() {
@@ -36,15 +36,13 @@ export function BottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 tap-target",
+                "flex flex-1 flex-col items-center justify-center gap-1",
                 "transition-all duration-200 relative"
               )}
             >
               {active && (
-                <span
-                  className="absolute top-2 inset-x-2 h-8 rounded-2xl"
-                  style={{ background: "rgba(0,0,0,0.05)" }}
-                />
+                <span className="absolute top-2 inset-x-1 h-8 rounded-2xl"
+                      style={{ background: "rgba(0,0,0,0.05)" }} />
               )}
               <Icon
                 className={cn(

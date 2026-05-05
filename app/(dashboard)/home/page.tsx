@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, MapPin, Camera } from "lucide-react";
+import { Plus, MapPin, Camera, Heart, ChevronRight } from "lucide-react";
 import { tap } from "@/lib/utils/haptics";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSchedule";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ActivityForm } from "@/components/schedule/ActivityForm";
-import { WeatherWidget } from "@/components/weather/WeatherWidget";
 import { format, parseISO, differenceInDays, addDays, isSameDay, isToday } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import Link from "next/link";
@@ -42,9 +41,10 @@ function getGreeting(): string {
   return "晚上好";
 }
 
+/* ── Dual timezone clock ── */
 function DualClock() {
-  const [klTime,  setKL]  = useState("");
-  const [krTime,  setKR]  = useState("");
+  const [klTime, setKL] = useState("");
+  const [krTime, setKR] = useState("");
 
   useEffect(() => {
     function update() {
@@ -72,6 +72,103 @@ function DualClock() {
            style={{ boxShadow: "var(--shadow-card)" }}>
         <span className="text-xs">🇰🇷</span>
         <span className="text-xs font-bold text-ink-mid">首尔 {krTime}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Sangsu neighbourhood mini-map card ── */
+function MapPreviewCard() {
+  return (
+    <Link href="/map" className="mx-4 mb-4 block rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
+          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.10)" }}>
+      {/* Sky gradient background */}
+      <div style={{ background: "linear-gradient(160deg, #B8D4F0 0%, #D4E8F8 40%, #E8F4E8 100%)", minHeight: 140 }}
+           className="relative p-4">
+        {/* Decorative buildings silhouette */}
+        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around px-2 opacity-20">
+          {[32,48,28,56,36,42,26,50,30].map((h, i) => (
+            <div key={i} style={{ height: h, width: 18, background: "#3A5D40", borderRadius: "4px 4px 0 0" }} />
+          ))}
+        </div>
+
+        {/* Station pin */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+          <div className="h-10 w-10 rounded-full bg-sage flex items-center justify-center shadow-lg"
+               style={{ boxShadow: "0 4px 20px rgba(91,136,98,0.5)" }}>
+            <span className="text-lg">🏠</span>
+          </div>
+          <div className="mt-1.5 bg-white rounded-xl px-2.5 py-1 shadow"
+               style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+            <p className="text-[10px] font-black text-ink">상수역 · 合水站</p>
+          </div>
+        </div>
+
+        {/* Nearby dots */}
+        <div className="absolute top-5 left-10 h-3 w-3 rounded-full bg-petal-400 shadow-sm opacity-70" title="홍대" />
+        <div className="absolute top-8 right-12 h-3 w-3 rounded-full bg-ginger-400 shadow-sm opacity-70" title="신촌" />
+        <div className="absolute bottom-10 left-16 h-2.5 w-2.5 rounded-full bg-lavender shadow-sm opacity-70" />
+
+        {/* Top-right label */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-2xl px-2.5 py-1"
+             style={{ boxShadow: "var(--shadow-card)" }}>
+          <MapPin className="h-3 w-3 text-sage" />
+          <span className="text-[10px] font-bold text-ink">上水洞 Sangsu</span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-surface px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-ink">我们住在这里 🏠</p>
+          <p className="text-[10px] text-ink-muted mt-0.5">연세로 2나길 · Yonsei-ro, Mapo-gu</p>
+        </div>
+        <div className="flex items-center gap-1 text-sage text-xs font-bold">
+          查看地图 <ChevronRight className="h-3.5 w-3.5" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Malaysia return countdown bar ── */
+function MalaysiaCountdown() {
+  const now      = new Date();
+  const daysBack = differenceInDays(TRIP_END, now);
+  const inTrip   = now >= TRIP_START && now <= TRIP_END;
+  const returned = now > TRIP_END;
+
+  if (returned) return null;
+
+  // Progress through trip (0–1)
+  const tripLen  = differenceInDays(TRIP_END, TRIP_START);
+  const elapsed  = Math.max(0, differenceInDays(now, TRIP_START));
+  const progress = inTrip ? elapsed / tripLen : 0;
+
+  return (
+    <div className="mx-4 mb-4 rounded-3xl overflow-hidden"
+         style={{ background: "linear-gradient(135deg, #2C3E6B 0%, #3D5A9A 100%)", boxShadow: "0 8px 28px rgba(44,62,107,0.25)" }}>
+      <div className="px-5 py-3.5 flex items-center gap-4">
+        <span className="text-2xl shrink-0">🇲🇾</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <p className="text-white/80 text-xs font-semibold">
+              {inTrip ? "还有多久回马来西亚" : "距离返程"}
+            </p>
+            <p className="text-white font-black text-lg leading-none">
+              {daysBack > 0 ? `${daysBack} 天` : "今天回家！"}
+            </p>
+          </div>
+          {inTrip && (
+            <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+              <div className="h-full rounded-full bg-white/70 transition-all duration-500"
+                   style={{ width: `${progress * 100}%` }} />
+            </div>
+          )}
+          <p className="text-white/50 text-[10px] mt-1">
+            {format(TRIP_END, "M月d日")} 返回吉隆坡 ✈️
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -114,8 +211,6 @@ export default function HomePage() {
             </h1>
             <DualClock />
           </div>
-
-          {/* Current user avatar */}
           <div className="ml-3 mt-0.5 h-12 w-12 rounded-3xl bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center text-2xl shrink-0"
                style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.12)" }}>
             {userEmoji}
@@ -123,11 +218,14 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Weather (spacious) ── */}
-      <WeatherWidget />
+      {/* ── Map preview at the top ── */}
+      <MapPreviewCard />
 
-      {/* ── Countdown card ── */}
-      {daysLeft > 0 ? (
+      {/* ── Malaysia return countdown ── */}
+      <MalaysiaCountdown />
+
+      {/* ── Departure countdown (before trip) ── */}
+      {daysLeft > 0 && (
         <div className="mx-4 mb-4 rounded-3xl overflow-hidden relative"
              style={{ background: "linear-gradient(135deg, #E8A800 0%, #F4C842 100%)", boxShadow: "0 8px 32px rgba(232,168,0,0.25)" }}>
           <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
@@ -142,7 +240,10 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* During trip banner */}
+      {daysLeft <= 0 && new Date() <= TRIP_END && (
         <div className="mx-4 mb-4 rounded-3xl px-5 py-3 flex items-center gap-3"
              style={{ background: "linear-gradient(135deg, #5B8862, #4A9592)", boxShadow: "0 8px 24px rgba(91,136,98,0.25)" }}>
           <span className="text-3xl animate-plane-bob inline-block">✈️</span>
@@ -155,15 +256,15 @@ export default function HomePage() {
 
       {/* ── Quick actions ── */}
       <div className="flex gap-2 px-4 mb-4">
-        <Link href="/map"
-          className="flex-1 flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-mid"
-          style={{ boxShadow: "var(--shadow-card)" }}>
-          <MapPin className="h-4 w-4 text-mist-400" /> 景点地图
-        </Link>
         <Link href="/ai-tools"
           className="flex-1 flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-mid"
           style={{ boxShadow: "var(--shadow-card)" }}>
           <Camera className="h-4 w-4 text-lavender" /> AI 翻译
+        </Link>
+        <Link href="/wishlist"
+          className="flex-1 flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-mid"
+          style={{ boxShadow: "var(--shadow-card)" }}>
+          <Heart className="h-4 w-4 text-petal-400" /> 心愿打卡
         </Link>
       </div>
 
@@ -174,7 +275,7 @@ export default function HomePage() {
             const isActive = isSameDay(day, selectedDay);
             const hasTasks = activities.some((a) => isSameDay(parseISO(a.activity_date), day));
             return (
-              <button key={i} onClick={() => setSelectedDay(day)}
+              <button key={i} onClick={() => { tap(); setSelectedDay(day); }}
                 className="flex flex-col items-center shrink-0 rounded-2xl px-3 py-2.5 transition-all duration-200"
                 style={{
                   background: isActive ? "#5B8862" : "#FFFFFF",
@@ -202,7 +303,9 @@ export default function HomePage() {
       {/* ── Day activities ── */}
       <div className="px-4 pb-safe flex-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">{isToday(selectedDay) ? "今日行程" : `${format(selectedDay, "M月d日")} 行程`}</h2>
+          <h2 className="section-title">
+            {isToday(selectedDay) ? "今日行程" : `${format(selectedDay, "M月d日")} 行程`}
+          </h2>
           <button onClick={() => { tap(); setShowForm(true); }}
             className="flex items-center gap-1.5 bg-sage text-white text-xs font-bold rounded-2xl px-3 py-2"
             style={{ boxShadow: "0 4px 12px rgba(91,136,98,0.30)" }}>

@@ -97,6 +97,14 @@ export default function ExpensesPage() {
 
   const totalKrw = filtered.reduce((s, e) => s + e.amount_krw, 0);
 
+  // Personal spending: my actual share across all expenses (not what I paid on behalf of others)
+  const myActualKrw = expenses.reduce((sum, exp) => {
+    const inSplit = exp.splits?.some((s) => s.user_id === currentId) ?? exp.paid_by === currentId;
+    if (!inSplit) return sum;
+    const splitCount = exp.splits?.length || members.length || 1;
+    return sum + exp.amount_krw / splitCount;
+  }, 0);
+
   const mockProfiles = members.map((m) => ({
     id: m.id, display_name: m.name, avatar_url: null,
     phone: null, last_lat: null, last_lng: null, last_checkin: null, created_at: "", updated_at: "",
@@ -144,20 +152,39 @@ export default function ExpensesPage() {
         </button>
       </div>
 
-      {/* Total card */}
-      <div className="mx-4 mb-3 rounded-3xl px-5 py-4 relative overflow-hidden"
-           style={{ background: "linear-gradient(135deg, #E87060, #F4B5A5)", boxShadow: "0 8px 28px rgba(232,112,96,0.25)" }}>
-        <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10" />
-        <p className="text-white/70 text-xs font-semibold uppercase tracking-airy">旅游总支出</p>
-        <p className="text-4xl font-black text-white mt-1 tracking-tight">
-          ₩{totalKrw.toLocaleString("ko-KR")}
-        </p>
-        {myrRate && totalKrw > 0 && (
-          <p className="text-white/60 text-xs mt-0.5">
-            ≈ RM {(totalKrw / myrRate).toLocaleString("ms-MY", { maximumFractionDigits: 2 })}
+      {/* ── Personal vs Group spending dashboard ── */}
+      <div className="mx-4 mb-3 grid grid-cols-2 gap-2">
+        {/* Group total */}
+        <div className="rounded-3xl px-4 py-4 relative overflow-hidden"
+             style={{ background: "linear-gradient(135deg, #E87060, #F4A590)", boxShadow: "0 8px 24px rgba(232,112,96,0.25)" }}>
+          <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10" />
+          <p className="text-white/70 text-[10px] font-semibold uppercase tracking-wider">团队总支出</p>
+          <p className="text-2xl font-black text-white mt-1 leading-none tracking-tight">
+            ₩{expenses.reduce((s,e) => s+e.amount_krw, 0).toLocaleString("ko-KR")}
           </p>
-        )}
-        <p className="text-white/60 text-xs mt-1">{filtered.length} 笔消费</p>
+          {myrRate && expenses.length > 0 && (
+            <p className="text-white/60 text-[10px] mt-1">
+              ≈ RM {(expenses.reduce((s,e)=>s+e.amount_krw,0) / myrRate).toFixed(0)}
+            </p>
+          )}
+          <p className="text-white/50 text-[10px] mt-0.5">{expenses.length} 笔消费</p>
+        </div>
+
+        {/* My actual share */}
+        <div className="rounded-3xl px-4 py-4 relative overflow-hidden"
+             style={{ background: "linear-gradient(135deg, #5B8862, #4A9592)", boxShadow: "0 8px 24px rgba(91,136,98,0.25)" }}>
+          <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10" />
+          <p className="text-white/70 text-[10px] font-semibold uppercase tracking-wider">我的实际花费</p>
+          <p className="text-2xl font-black text-white mt-1 leading-none tracking-tight">
+            ₩{Math.round(myActualKrw).toLocaleString("ko-KR")}
+          </p>
+          {myrRate && myActualKrw > 0 && (
+            <p className="text-white/60 text-[10px] mt-1">
+              ≈ RM {(myActualKrw / myrRate).toFixed(0)}
+            </p>
+          )}
+          <p className="text-white/50 text-[10px] mt-0.5">我的分摊金额</p>
+        </div>
       </div>
 
       {/* Member filter */}
