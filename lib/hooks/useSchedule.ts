@@ -1,78 +1,81 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseClient } from "@/lib/supabase/client";
-import { cacheItems, getCachedItems } from "@/lib/utils/offline-cache";
 import type { Schedule, NewScheduleForm } from "@/types";
 
+const LS_KEY = "seoulmate_schedules";
 const QUERY_KEY = (tripId: string) => ["schedule", tripId];
 
-async function fetchSchedule(tripId: string): Promise<Schedule[]> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from("schedules")
-    .select("*")
-    .eq("trip_id", tripId)
-    .order("activity_date", { ascending: true })
-    .order("start_time",    { ascending: true });
+function genId(): string {
+  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+}
 
-  if (error) throw error;
-  const items = data as Schedule[];
-  await cacheItems("schedules", items);
-  return items;
+function loadAll(): Schedule[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
+  } catch { return []; }
+}
+
+function saveAll(items: Schedule[]): void {
+  localStorage.setItem(LS_KEY, JSON.stringify(items));
 }
 
 export function useSchedule(tripId: string) {
   return useQuery({
     queryKey: QUERY_KEY(tripId),
-    queryFn:  () => fetchSchedule(tripId),
-    placeholderData: () => {
-      if (typeof window !== "undefined") {
-        let cached: Schedule[] = [];
-        getCachedItems<Schedule>("schedules").then((items) => {
-          cached = items.filter((s) => s.trip_id === tripId);
-        });
-        return cached.length > 0 ? cached : undefined;
-      }
-    },
+    queryFn: () =>
+      loadAll()
+        .filter((s) => s.trip_id === tripId)
+        .sort((a, b) => {
+          const d = a.activity_date.localeCompare(b.activity_date);
+          if (d !== 0) return d;
+          return (a.start_time ?? "").localeCompare(b.start_time ?? "");
+        }),
+    staleTime: 0,
   });
 }
 
 export function useAddActivity(tripId: string) {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (form: NewScheduleForm) => {
-      const { data: user } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from("schedules")
-        .insert({ ...form, trip_id: tripId, created_by: user.user?.id })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Schedule;
+      const item: Schedule = {
+        id: genId(),
+        trip_id: tripId,
+        title: form.title,
+        description: form.description ?? null,
+        category: form.category,
+        activity_date: form.activity_date,
+        start_time: form.start_time ?? null,
+        end_time: form.end_time ?? null,
+        place_name: form.place_name ?? null,
+        address: form.address ?? null,
+        lat: form.lat ?? null,
+        lng: form.lng ?? null,
+        naver_place_id: null,
+        kakao_place_id: null,
+        created_by: localStorage.getItem("seoulmate_user") ?? "unknown",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const all = loadAll();
+      all.push(item);
+      saveAll(all);
+      return item;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY(tripId) });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY(tripId) }),
   });
 }
 
 export function useDeleteActivity(tripId: string) {
   const queryClient = useQueryClient();
-  const supabase = getSupabaseClient();
 
   return useMutation({
     mutationFn: async (activityId: string) => {
-      const { error } = await supabase
-        .from("schedules")
-        .delete()
-        .eq("id", activityId);
-      if (error) throw error;
+      saveAll(loadAll().filter((s) => s.id !== activityId));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEY(tripId) });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY(tripId) }),
   });
 }

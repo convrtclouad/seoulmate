@@ -13,8 +13,8 @@ export default function AIToolsPage() {
   const [activeTool, setActiveTool] = useState<Tool>("translator");
 
   return (
-    <div className="flex flex-col min-h-dvh">
-      <Header title="AI Toolset" />
+    <div className="flex flex-col min-h-dvh bg-bg">
+      <Header title="AI 工具" />
 
       <div className="px-4 py-4 space-y-4 pb-safe">
         {/* Hero */}
@@ -22,10 +22,8 @@ export default function AIToolsPage() {
           <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-forest-light/40" />
           <div className="relative z-10">
             <Wand2 className="h-8 w-8 mx-auto mb-2 text-forest-soft" />
-            <h2 className="text-lg font-black">AI Travel Assistant</h2>
-            <p className="text-sm text-forest-pale mt-1">
-              Translate menus · Speak Korean phrases
-            </p>
+            <h2 className="text-lg font-black">AI 旅游助理</h2>
+            <p className="text-sm text-forest-pale mt-1">菜单翻译 · 韩语口语练习</p>
           </div>
         </div>
 
@@ -35,29 +33,22 @@ export default function AIToolsPage() {
             onClick={() => setActiveTool("translator")}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all",
-              activeTool === "translator"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-neutral-500"
+              activeTool === "translator" ? "bg-white text-gray-900 shadow-sm" : "text-neutral-500"
             )}
           >
-            <Languages className="h-4 w-4" />
-            Menu Translator
+            <Languages className="h-4 w-4" /> 菜单翻译
           </button>
           <button
             onClick={() => setActiveTool("voice")}
             className={cn(
               "flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all",
-              activeTool === "voice"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-neutral-500"
+              activeTool === "voice" ? "bg-white text-gray-900 shadow-sm" : "text-neutral-500"
             )}
           >
-            <Mic className="h-4 w-4" />
-            Voice Helper
+            <Mic className="h-4 w-4" /> 韩语助手
           </button>
         </div>
 
-        {/* Active tool */}
         {activeTool === "translator" ? <MenuTranslator /> : <VoiceHelper />}
       </div>
     </div>
