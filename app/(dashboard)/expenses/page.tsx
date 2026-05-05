@@ -19,14 +19,18 @@ const CAT_BG: Record<string, string> = {
   accommodation: "bg-lavender-100", entertainment: "bg-sage-100", health: "bg-petal-50", other: "bg-black/5",
 };
 
-// Fixed member pill colours when selected (solid, readable)
-const MEMBER_SELECTED_BG = [
-  "bg-sage-500",
-  "bg-mist-500",
-  "bg-lavender",
-  "bg-ginger-500",
-  "bg-petal-400",
-];
+// Hex colours for selected member pills — avoids missing Tailwind scale issues
+const MEMBER_HEX = ["#5B8862", "#4A9592", "#8B7AB8", "#E8A800", "#E87060"];
+
+// Settled-debts helpers (localStorage-backed)
+const SETTLED_KEY = "seoulmate_settled_debts";
+function loadSettled(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(SETTLED_KEY) ?? "[]")); }
+  catch { return new Set(); }
+}
+function saveSettled(s: Set<string>) {
+  localStorage.setItem(SETTLED_KEY, JSON.stringify([...s]));
+}
 
 type Tab = "list" | "debts";
 
@@ -66,6 +70,9 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false);
   const [filterMember, setFilterMember] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState("");
+  const [settled, setSettled]   = useState<Set<string>>(new Set());
+
+  useEffect(() => { setSettled(loadSettled()); }, []);
 
   const { data: expenses = [], isLoading } = useExpenses(TRIP_ID);
   const { data: members = [] }             = useMembers();
@@ -75,6 +82,14 @@ export default function ExpensesPage() {
   useEffect(() => {
     setCurrentId(localStorage.getItem("seoulmate_user") ?? members[0]?.id ?? "");
   }, [members]);
+
+  function toggleSettle(debtorId: string, creditorId: string) {
+    const key = `${debtorId}→${creditorId}`;
+    const next = new Set(settled);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setSettled(next);
+    saveSettled(next);
+  }
 
   const filtered = filterMember
     ? expenses.filter((e) => e.paid_by === filterMember || e.splits?.some((s) => s.user_id === filterMember))
@@ -156,16 +171,16 @@ export default function ExpensesPage() {
           </button>
           {members.map((m, idx) => {
             const isSelected = filterMember === m.id;
-            const selectedBg = MEMBER_SELECTED_BG[idx % MEMBER_SELECTED_BG.length];
+            const hex = MEMBER_HEX[idx % MEMBER_HEX.length];
             return (
               <button key={m.id}
                 onClick={() => setFilterMember(isSelected ? null : m.id)}
-                className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-                  isSelected
-                    ? `${selectedBg} text-white`
-                    : "bg-surface text-ink-mid"
-                }`}
-                style={{ boxShadow: isSelected ? "0 3px 12px rgba(0,0,0,0.18)" : "var(--shadow-card)" }}>
+                className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all"
+                style={{
+                  background: isSelected ? hex : "#FFFFFF",
+                  color: isSelected ? "#FFFFFF" : "#5C5A58",
+                  boxShadow: isSelected ? `0 3px 14px ${hex}55` : "var(--shadow-card)",
+                }}>
                 <span>{m.emoji}</span>
                 <span>{m.name}</span>
               </button>
@@ -228,7 +243,8 @@ export default function ExpensesPage() {
             </div>
           )
         ) : (
-          <DebtMatrix expenses={expenses} profiles={mockProfiles} currentUserId={currentId} />
+          <DebtMatrix expenses={expenses} profiles={mockProfiles} currentUserId={currentId}
+            settled={settled} onToggleSettle={toggleSettle} />
         )}
       </div>
 
