@@ -5,28 +5,15 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: {
-    default: "SeoulMate",
-    template: "%s · SeoulMate",
-  },
-  description: "Your AI-powered group travel companion for South Korea",
+  title: { default: "SeoulMate", template: "%s · SeoulMate" },
+  description: "你的首尔旅游小助手",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "SeoulMate",
-  },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "SeoulMate" },
   formatDetection: { telephone: false },
-  openGraph: {
-    type: "website",
-    siteName: "SeoulMate",
-    title: "SeoulMate — Korea Travel Companion",
-    description: "Expense splitting, smart schedules, and AI tools for your Korea trip",
-  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1B4332",
+  themeColor: "#F9F8F4",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -34,21 +21,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="zh" className="h-full">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
-      <body
-        className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
-      >
+      <body className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

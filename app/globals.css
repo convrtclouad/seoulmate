@@ -2,19 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Variables ─────────────────────────────────────────────────────────── */
+/* ─── CSS Variables ───────────────────────────────────────────── */
 :root {
-  --bottom-nav-height: 4rem;
-  --header-height: 3.5rem;
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-area-top: env(safe-area-inset-top, 0px);
+  --bottom-nav-height: 4.5rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --radius-card: 24px;
+  --radius-btn:  16px;
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.05);
+  --shadow-lift: 0 8px 32px rgba(0,0,0,0.09);
 }
 
-/* ─── Base Reset ────────────────────────────────────────────────────────────── */
+/* ─── Base ────────────────────────────────────────────────────── */
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   html {
     @apply scroll-smooth;
@@ -22,143 +23,154 @@
   }
 
   body {
-    @apply bg-bg text-gray-900 antialiased;
+    background-color: #F9F8F4;
+    color: #2A2826;
+    @apply antialiased;
     min-height: 100dvh;
-    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom));
+    letter-spacing: 0.01em;
+    font-feature-settings: "kern" 1, "liga" 1;
   }
 
-  main {
-    @apply overflow-y-auto;
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
   }
 }
 
-/* ─── Utility Layer ─────────────────────────────────────────────────────────── */
+/* ─── Utilities ───────────────────────────────────────────────── */
 @layer utilities {
-  /* Safe bottom padding for content above bottom nav */
-  .pb-safe {
-    padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 1rem);
-  }
+  .pb-safe { padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 1rem); }
+  .pt-safe { padding-top:    calc(var(--safe-top) + 1rem); }
 
-  /* Safe top padding for notch */
-  .pt-safe {
-    padding-top: calc(var(--safe-area-top) + 1rem);
-  }
+  .tap-target { @apply min-h-[44px] min-w-[44px]; }
 
-  /* Forest green gradient text */
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #1B4332, #40916C);
-  }
-
-  /* Glassmorphism card */
-  .glass-card {
-    @apply backdrop-blur-md bg-white/80 border border-white/60;
-  }
-
-  /* Touch-friendly tap target */
-  .tap-target {
-    @apply min-h-[44px] min-w-[44px];
-  }
-
-  /* Scrollbar hide for carousels */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Shimmer loading animation */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      rgba(255,255,255,0) 0%,
-      rgba(255,255,255,0.6) 50%,
-      rgba(255,255,255,0) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #5B8862, #4A9592);
   }
 
-  @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position:  200% 0; }
+  /* Shimmer */
+  .shimmer {
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s infinite;
   }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 }
 
-/* ─── Component Layer ───────────────────────────────────────────────────────── */
+/* ─── Components ──────────────────────────────────────────────── */
 @layer components {
+
+  /* ── Buttons ── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl
-           bg-forest text-white
-           px-5 py-3 text-sm font-semibold
-           shadow-sm transition-all duration-200 active:scale-95
-           hover:bg-forest-light disabled:opacity-50 disabled:cursor-not-allowed
+    @apply inline-flex items-center justify-center gap-2
+           rounded-3xl bg-sage text-white
+           px-6 py-3.5 text-sm font-semibold tracking-wide
+           transition-all duration-200 active:scale-95
+           hover:bg-sage-600 disabled:opacity-40 disabled:cursor-not-allowed
            tap-target;
+    box-shadow: 0 4px 16px rgba(91,136,98,0.30);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl
-           border border-forest-pale bg-white
-           px-5 py-3 text-sm font-semibold text-forest
+    @apply inline-flex items-center justify-center gap-2
+           rounded-3xl bg-surface text-sage-600
+           px-6 py-3.5 text-sm font-semibold tracking-wide
            transition-all duration-200 active:scale-95
-           hover:bg-forest-mist disabled:opacity-50 tap-target;
+           hover:bg-sage-50 disabled:opacity-40 tap-target;
+    box-shadow: var(--shadow-card);
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-           px-4 py-2 text-sm font-medium text-neutral-600
+    @apply inline-flex items-center justify-center gap-2
+           rounded-2xl px-4 py-2 text-sm font-medium text-ink-mid
            transition-all duration-200 active:scale-95
-           hover:bg-neutral-100 tap-target;
+           hover:bg-black/5 tap-target;
   }
 
+  /* ── Cards ── */
   .card {
-    @apply rounded-2xl bg-surface shadow-card p-4;
+    @apply rounded-3xl bg-surface p-4;
+    box-shadow: var(--shadow-card);
   }
 
-  .card-hover {
-    @apply card transition-shadow duration-200 hover:shadow-card-hover cursor-pointer;
+  .card-lift {
+    @apply card transition-shadow duration-200;
   }
+  .card-lift:hover { box-shadow: var(--shadow-lift); }
 
+  /* ── Inputs ── */
   .input {
-    @apply w-full rounded-xl border border-neutral-200 bg-white px-4 py-3
-           text-sm text-gray-900 placeholder-neutral-400
-           focus:border-forest-mid focus:outline-none focus:ring-2 focus:ring-forest-mist
+    @apply w-full rounded-2xl bg-cream px-4 py-3.5
+           text-sm text-ink placeholder-ink-faint
+           focus:outline-none focus:ring-2 focus:ring-sage-200
            transition-all duration-200;
+    box-shadow: var(--shadow-input, inset 0 1px 4px rgba(0,0,0,0.04));
+    border: none;
   }
 
+  /* ── Labels ── */
   .label {
-    @apply block text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1.5;
+    @apply block text-xs font-semibold text-ink-muted uppercase tracking-airy mb-2;
   }
 
+  /* ── Badges ── */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
   }
+  .badge-sage    { @apply badge bg-sage-100 text-sage-600; }
+  .badge-ginger  { @apply badge bg-ginger-100 text-ginger-500; }
+  .badge-petal   { @apply badge bg-petal-100 text-petal-400; }
+  .badge-lavender{ @apply badge bg-lavender-100 text-lavender-400; }
+  .badge-mist    { @apply badge bg-mist-100 text-mist-400; }
 
-  .badge-green {
-    @apply badge bg-forest-mist text-forest;
-  }
+  /* ── Currency pills ── */
+  .currency-krw { @apply badge bg-sage-100 text-sage-600 font-bold; }
+  .currency-myr { @apply badge bg-mist-100 text-mist-400 font-bold; }
 
-  .badge-soft {
-    @apply badge bg-neutral-100 text-neutral-600;
-  }
-
+  /* ── Section title ── */
   .section-title {
-    @apply text-lg font-bold text-gray-900;
+    @apply text-base font-bold text-ink tracking-tight;
   }
 
+  /* ── Page header ── */
   .page-header {
-    @apply sticky top-0 z-40 bg-surface/90 backdrop-blur-sm border-b border-neutral-100
-           px-4 h-14 flex items-center justify-between;
+    @apply sticky top-0 z-40 px-5 h-14 flex items-center justify-between;
+    background: rgba(249,248,244,0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
-  /* Currency pill badges */
-  .currency-krw {
-    @apply badge bg-forest-mist text-forest font-semibold;
+  /* ── Tab pill switcher ── */
+  .tab-bar {
+    @apply flex rounded-3xl p-1 gap-1;
+    background: rgba(0,0,0,0.05);
+  }
+  .tab-item {
+    @apply flex-1 flex items-center justify-center gap-1.5 rounded-2xl
+           py-2.5 text-sm font-semibold transition-all duration-200;
+  }
+  .tab-item-active {
+    @apply tab-item bg-surface text-ink;
+    box-shadow: var(--shadow-card);
+  }
+  .tab-item-inactive {
+    @apply tab-item text-ink-muted;
   }
 
-  .currency-myr {
-    @apply badge bg-blue-50 text-blue-600 font-semibold;
+  /* ── Checklist item ── */
+  .checklist-item {
+    @apply flex items-center gap-3 rounded-2xl bg-surface px-4 py-3.5;
+    box-shadow: var(--shadow-card);
   }
 
-  /* Timeline connector line */
+  /* ── Timeline connector ── */
   .timeline-line {
-    @apply absolute left-5 top-10 bottom-0 w-0.5 bg-gradient-to-b from-forest-pale to-transparent;
+    @apply absolute left-5 top-10 bottom-0 w-0.5;
+    background: linear-gradient(to bottom, #C0D6C1, transparent);
   }
 }
