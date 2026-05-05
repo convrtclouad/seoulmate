@@ -19,7 +19,7 @@ export default function IntroPage() {
   const [entering, setEntering] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newEmoji, setNewEmoji] = useState("😊");
+  const [newEmoji, setNewEmoji] = useState("🐱");
   const [newColor, setNewColor] = useState(COLOR_OPTIONS[0]);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function IntroPage() {
         <h1 className="text-3xl font-black text-ink tracking-tight">SeoulMate</h1>
         <p className="text-ink-muted text-sm mt-2">首尔旅游小助手 · 2026</p>
         <div className="mt-4 inline-flex items-center gap-2 bg-ginger-100 text-ginger-500 rounded-full px-4 py-2 text-xs font-semibold">
-          📅 5月8日 – 5月16日, 2026
+          📅 5月7日 – 5月15日, 2026
         </div>
       </div>
 
@@ -80,27 +80,41 @@ export default function IntroPage() {
           {members.map((m) => {
             const isSelected = selected === m.id;
             return (
-              <button key={m.id} onClick={() => setSelected(m.id)}
-                className="relative flex flex-col items-center gap-3 rounded-3xl p-5 bg-surface transition-all duration-200 active:scale-95"
-                style={{ boxShadow: isSelected ? `0 0 0 2px #5B8862, ${`var(--shadow-lift)`}` : "var(--shadow-card)" }}
+              <div key={m.id} role="button" tabIndex={0}
+                onClick={() => setSelected(m.id)}
+                onKeyDown={(e) => e.key === "Enter" && setSelected(m.id)}
+                className="relative flex flex-col items-center gap-3 rounded-3xl pt-6 pb-4 px-4 bg-surface transition-all duration-200 active:scale-95 cursor-pointer select-none"
+                style={{
+                  boxShadow: isSelected
+                    ? "0 0 0 2.5px #5B8862, 0 8px 28px rgba(91,136,98,0.18)"
+                    : "var(--shadow-card)",
+                  background: isSelected ? "#F4FAF5" : "white",
+                }}
               >
+                {/* Remove button */}
                 {members.length > 1 && (
                   <button onClick={(e) => { e.stopPropagation(); removeMember(m.id); }}
-                    className="absolute top-2.5 left-2.5 h-5 w-5 rounded-full bg-black/5 flex items-center justify-center">
+                    className="absolute top-2.5 left-2.5 h-6 w-6 rounded-full bg-black/6 flex items-center justify-center z-10">
                     <X className="h-3 w-3 text-ink-muted" />
                   </button>
                 )}
+                {/* Check mark */}
                 {isSelected && (
-                  <div className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full bg-sage flex items-center justify-center">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                  <div className="absolute top-2.5 right-2.5 h-6 w-6 rounded-full bg-sage flex items-center justify-center">
+                    <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
                   </div>
                 )}
-                <div className={`h-16 w-16 rounded-3xl bg-gradient-to-br ${m.color} flex items-center justify-center text-3xl`}
-                     style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.12)" }}>
+                {/* Animal avatar — round "photo" style */}
+                <div className={`h-20 w-20 rounded-full bg-gradient-to-br ${m.color} flex items-center justify-center text-4xl`}
+                     style={{
+                       boxShadow: isSelected
+                         ? "0 6px 20px rgba(91,136,98,0.28)"
+                         : "0 4px 14px rgba(0,0,0,0.12)",
+                     }}>
                   {m.emoji}
                 </div>
-                <span className="font-bold text-ink text-base">{m.name}</span>
-              </button>
+                <span className="font-bold text-ink text-sm">{m.name}</span>
+              </div>
             );
           })}
         </div>
@@ -138,11 +152,20 @@ export default function IntroPage() {
             <input className="input mb-4" placeholder="输入名字" value={newName}
               onChange={(e) => setNewName(e.target.value)} maxLength={20} />
 
-            <label className="label">头像表情</label>
-            <div className="flex flex-wrap gap-2 mb-4">
+            {/* Selected preview */}
+            <div className="flex justify-center mb-4">
+              <div className={`h-20 w-20 rounded-full bg-gradient-to-br ${newColor} flex items-center justify-center text-4xl`}
+                   style={{ boxShadow: "0 6px 20px rgba(0,0,0,0.14)" }}>
+                {newEmoji}
+              </div>
+            </div>
+            <label className="label">选择动物头像</label>
+            <div className="grid grid-cols-6 gap-2 mb-4">
               {EMOJI_OPTIONS.map((e) => (
                 <button key={e} onClick={() => setNewEmoji(e)}
-                  className={`text-2xl p-2 rounded-2xl transition-all ${newEmoji === e ? "bg-sage-100 scale-110" : "hover:bg-black/5"}`}>
+                  className={`text-2xl aspect-square flex items-center justify-center rounded-2xl transition-all ${
+                    newEmoji === e ? "bg-sage-100 scale-110 shadow-sm" : "hover:bg-black/5"
+                  }`}>
                   {e}
                 </button>
               ))}

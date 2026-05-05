@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, MapPin, Cloud } from "lucide-react";
+import { Plus, MapPin, Camera } from "lucide-react";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSchedule";
-import { useMembers } from "@/lib/hooks/useMembers";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ActivityForm } from "@/components/schedule/ActivityForm";
+import { WeatherWidget } from "@/components/weather/WeatherWidget";
 import { format, parseISO, differenceInDays, addDays, isSameDay } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 
-const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
-const TRIP_START = new Date("2026-05-08");
-const TRIP_END   = new Date("2026-05-16");
+const TRIP_ID    = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
+const TRIP_START = new Date("2026-05-07");
+const TRIP_END   = new Date("2026-05-15");
 
-const TRIP_DAYS = Array.from({ length: differenceInDays(TRIP_END, TRIP_START) + 1 }, (_, i) =>
-  addDays(TRIP_START, i)
+const TRIP_DAYS = Array.from(
+  { length: differenceInDays(TRIP_END, TRIP_START) + 1 },
+  (_, i) => addDays(TRIP_START, i)
 );
 
 const CAT_EMOJI: Record<string, string> = {
@@ -24,63 +25,105 @@ const CAT_EMOJI: Record<string, string> = {
   accommodation: "🏨", shopping: "🛍️", other: "📌",
 };
 const CAT_COLOR: Record<string, string> = {
-  transport: "bg-ginger-100 text-ginger-500",
-  food: "bg-petal-100 text-petal-400",
-  attraction: "bg-sage-100 text-sage-600",
+  transport:     "bg-ginger-100 text-ginger-500",
+  food:          "bg-petal-100 text-petal-400",
+  attraction:    "bg-sage-100 text-sage-600",
   accommodation: "bg-lavender-100 text-lavender-400",
-  shopping: "bg-mist-100 text-mist-400",
-  other: "bg-black/5 text-ink-muted",
+  shopping:      "bg-mist-100 text-mist-400",
+  other:         "bg-black/5 text-ink-muted",
 };
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 6)  return "夜深了";
+  if (h < 12) return "早上好";
+  if (h < 18) return "下午好";
+  return "晚上好";
+}
+
+function DualClock() {
+  const [klTime,  setKL]  = useState("");
+  const [krTime,  setKR]  = useState("");
+
+  useEffect(() => {
+    function update() {
+      const fmt = (tz: string) =>
+        new Intl.DateTimeFormat("zh-CN", {
+          timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false,
+        }).format(new Date());
+      setKL(fmt("Asia/Kuala_Lumpur"));
+      setKR(fmt("Asia/Seoul"));
+    }
+    update();
+    const id = setInterval(update, 10_000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!klTime) return null;
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <div className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-3 py-1.5"
+           style={{ boxShadow: "var(--shadow-card)" }}>
+        <span className="text-xs">🇲🇾</span>
+        <span className="text-xs font-bold text-ink-mid">KL {klTime}</span>
+      </div>
+      <div className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-3 py-1.5"
+           style={{ boxShadow: "var(--shadow-card)" }}>
+        <span className="text-xs">🇰🇷</span>
+        <span className="text-xs font-bold text-ink-mid">首尔 {krTime}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { data: activities = [], isLoading } = useSchedule(TRIP_ID);
-  const { data: members = [] } = useMembers();
   const addActivity    = useAddActivity(TRIP_ID);
   const deleteActivity = useDeleteActivity(TRIP_ID);
 
-  const [userName, setUserName]   = useState("旅行者");
-  const [userEmoji, setUserEmoji] = useState("✈️");
+  const [userName,    setUserName]    = useState("旅行者");
+  const [userEmoji,   setUserEmoji]   = useState("🐻");
   const [selectedDay, setSelectedDay] = useState(TRIP_DAYS[0]);
-  const [showForm, setShowForm]   = useState(false);
+  const [showForm,    setShowForm]    = useState(false);
 
   useEffect(() => {
     setUserName(localStorage.getItem("seoulmate_user_name") ?? "旅行者");
-    setUserEmoji(localStorage.getItem("seoulmate_user_emoji") ?? "✈️");
-    // Auto-select today if within trip
+    setUserEmoji(localStorage.getItem("seoulmate_user_emoji") ?? "🐻");
     const today = new Date();
     const match = TRIP_DAYS.find((d) => isSameDay(d, today));
     if (match) setSelectedDay(match);
   }, []);
 
-  const daysLeft = differenceInDays(TRIP_START, new Date());
+  const daysLeft      = differenceInDays(TRIP_START, new Date());
   const dayActivities = activities.filter((a) => isSameDay(parseISO(a.activity_date), selectedDay));
+  const greeting      = getGreeting();
 
   return (
     <div className="flex flex-col min-h-dvh bg-cream">
-      {/* ── Top bar ── */}
-      <div className="px-5 pt-safe pt-4 pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-ink-muted font-medium">
+
+      {/* ── Header ── */}
+      <div className="px-5 pt-safe pt-6 pb-5">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="text-xs text-ink-faint font-medium">
               {format(new Date(), "M月d日 EEEE", { locale: zhCN })}
             </p>
-            <h1 className="text-xl font-black text-ink mt-0.5 tracking-tight">
-              首尔行程 🇰🇷
+            <h1 className="text-2xl font-black text-ink tracking-tight mt-0.5">
+              {greeting}，{userName} 👋
             </h1>
+            <DualClock />
           </div>
-          {/* Member avatars */}
-          <div className="flex -space-x-2">
-            {members.slice(0, 4).map((m) => (
-              <div key={m.id}
-                className={`h-8 w-8 rounded-full bg-gradient-to-br ${m.color} flex items-center justify-center text-sm ring-2 ring-cream`}
-                title={m.name}
-              >
-                {m.emoji}
-              </div>
-            ))}
+
+          {/* Current user avatar */}
+          <div className="ml-3 mt-0.5 h-12 w-12 rounded-3xl bg-gradient-to-br from-amber-200 to-orange-300 flex items-center justify-center text-2xl shrink-0"
+               style={{ boxShadow: "0 4px 14px rgba(0,0,0,0.12)" }}>
+            {userEmoji}
           </div>
         </div>
       </div>
+
+      {/* ── Weather (spacious) ── */}
+      <WeatherWidget />
 
       {/* ── Countdown card ── */}
       {daysLeft > 0 ? (
@@ -119,7 +162,7 @@ export default function HomePage() {
         <Link href="/ai-tools"
           className="flex-1 flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-mid"
           style={{ boxShadow: "var(--shadow-card)" }}>
-          <Cloud className="h-4 w-4 text-lavender" /> AI翻译
+          <Camera className="h-4 w-4 text-lavender" /> AI 翻译
         </Link>
       </div>
 
@@ -130,16 +173,13 @@ export default function HomePage() {
             const isActive = isSameDay(day, selectedDay);
             const hasTasks = activities.some((a) => isSameDay(parseISO(a.activity_date), day));
             return (
-              <button
-                key={i}
-                onClick={() => setSelectedDay(day)}
+              <button key={i} onClick={() => setSelectedDay(day)}
                 className="flex flex-col items-center shrink-0 rounded-2xl px-3 py-2.5 transition-all duration-200"
                 style={{
                   background: isActive ? "#5B8862" : "#FFFFFF",
                   boxShadow: isActive ? "0 4px 16px rgba(91,136,98,0.30)" : "var(--shadow-card)",
                   minWidth: 52,
-                }}
-              >
+                }}>
                 <span className={`text-[9px] font-bold uppercase tracking-wider ${isActive ? "text-white/70" : "text-ink-faint"}`}>
                   DAY{i + 1}
                 </span>
@@ -161,9 +201,7 @@ export default function HomePage() {
       {/* ── Day activities ── */}
       <div className="px-4 pb-safe flex-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">
-            {format(selectedDay, "M月d日")} 行程
-          </h2>
+          <h2 className="section-title">{format(selectedDay, "M月d日")} 行程</h2>
           <button onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 bg-sage text-white text-xs font-bold rounded-2xl px-3 py-2"
             style={{ boxShadow: "0 4px 12px rgba(91,136,98,0.30)" }}>
@@ -182,16 +220,15 @@ export default function HomePage() {
         ) : (
           <div className="space-y-3">
             {dayActivities.map((act, idx) => (
-              <div key={act.id}
-                className="relative flex gap-3 rounded-3xl bg-surface p-4"
-                style={{ boxShadow: "var(--shadow-card)" }}>
-                {/* Timeline dot */}
+              <div key={act.id} className="relative flex gap-3 rounded-3xl bg-surface p-4"
+                   style={{ boxShadow: "var(--shadow-card)" }}>
                 <div className="flex flex-col items-center shrink-0">
                   <div className={`h-9 w-9 rounded-2xl flex items-center justify-center text-lg ${CAT_COLOR[act.category] ?? "bg-black/5 text-ink-muted"}`}>
                     {CAT_EMOJI[act.category] ?? "📌"}
                   </div>
                   {idx < dayActivities.length - 1 && (
-                    <div className="w-0.5 flex-1 mt-2 mb-[-12px]" style={{ background: "linear-gradient(to bottom, #C0D6C1, transparent)" }} />
+                    <div className="w-0.5 flex-1 mt-2 mb-[-12px]"
+                         style={{ background: "linear-gradient(to bottom, #C0D6C1, transparent)" }} />
                   )}
                 </div>
                 <div className="flex-1 min-w-0 py-0.5">
@@ -218,16 +255,18 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Add activity modal */}
       <Modal open={showForm} onClose={() => setShowForm(false)} title="新增行程" size="full">
         <ActivityForm
-          onSubmit={async (form) => { await addActivity.mutateAsync({ ...form, activity_date: format(selectedDay, "yyyy-MM-dd") }); setShowForm(false); }}
+          onSubmit={async (form) => {
+            await addActivity.mutateAsync({ ...form, activity_date: format(selectedDay, "yyyy-MM-dd") });
+            setShowForm(false);
+          }}
           onCancel={() => setShowForm(false)}
         />
       </Modal>
 
       <style>{`
-        @keyframes plane-bob { 0%,100% { transform:translateY(0) rotate(-4deg); } 50% { transform:translateY(-10px) rotate(2deg); } }
+        @keyframes plane-bob { 0%,100%{transform:translateY(0) rotate(-4deg);} 50%{transform:translateY(-10px) rotate(2deg);} }
         .animate-plane-bob { animation: plane-bob 2.2s ease-in-out infinite; }
       `}</style>
     </div>

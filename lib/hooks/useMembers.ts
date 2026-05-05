@@ -13,13 +13,17 @@ const LS_KEY = "seoulmate_members";
 const QUERY_KEY = ["members"];
 
 const DEFAULT_MEMBERS: Member[] = [
-  { id: "bryan", name: "Bryan", emoji: "🧑‍💻", color: "from-emerald-400 to-teal-500" },
-  { id: "sarah", name: "Sarah", emoji: "👩‍🎨", color: "from-violet-400 to-purple-500" },
-  { id: "mike",  name: "Mike",  emoji: "🧑‍🍳", color: "from-orange-400 to-amber-500" },
-  { id: "priya", name: "Priya", emoji: "👩‍✈️", color: "from-rose-400 to-pink-500" },
+  { id: "bryan", name: "Bryan", emoji: "🐻", color: "from-emerald-400 to-teal-500" },
+  { id: "sarah", name: "Sarah", emoji: "🦊", color: "from-violet-400 to-purple-500" },
+  { id: "mike",  name: "Mike",  emoji: "🐺", color: "from-orange-400 to-amber-500" },
+  { id: "priya", name: "Priya", emoji: "🐱", color: "from-rose-400 to-pink-500" },
 ];
 
-const EMOJI_OPTIONS = ["😊","🧑‍💻","👩‍🎨","🧑‍🍳","👩‍✈️","🧑‍🎤","👩‍🔬","🧑‍🎓","👩‍💼","🧑‍🚀","🐼","🦊","🐸","🦄","🐯","🐻","🌸","⭐","🎯","🎸"];
+const EMOJI_OPTIONS = [
+  "🐱","🐶","🐼","🐨","🐻","🦊","🐰","🐹",
+  "🐮","🐷","🐸","🦁","🐯","🐻‍❄️","🦝","🦙",
+  "🦥","🐧","🦆","🦋","🐬","🦄","🐺","🦔",
+];
 const COLOR_OPTIONS = [
   "from-emerald-400 to-teal-500",
   "from-violet-400 to-purple-500",

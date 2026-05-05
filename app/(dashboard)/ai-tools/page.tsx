@@ -1,55 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { Wand2, Languages, Mic } from "lucide-react";
-import { Header } from "@/components/layout/Header";
-import { MenuTranslator } from "@/components/ai-tools/MenuTranslator";
+import { Camera, Mic } from "lucide-react";
+import { CameraTranslator } from "@/components/ai-tools/CameraTranslator";
 import { VoiceHelper } from "@/components/ai-tools/VoiceHelper";
-import { cn } from "@/lib/utils/cn";
+import { useMembers } from "@/lib/hooks/useMembers";
 
-type Tool = "translator" | "voice";
+type Tool = "camera" | "voice";
 
 export default function AIToolsPage() {
-  const [activeTool, setActiveTool] = useState<Tool>("translator");
+  const { data: members = [] } = useMembers();
+  const [activeTool, setActiveTool] = useState<Tool>("camera");
 
   return (
-    <div className="flex flex-col min-h-dvh bg-bg">
-      <Header title="AI 工具" />
-
-      <div className="px-4 py-4 space-y-4 pb-safe">
-        {/* Hero */}
-        <div className="rounded-3xl bg-forest text-white text-center py-6 px-4 relative overflow-hidden">
-          <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-forest-light/40" />
-          <div className="relative z-10">
-            <Wand2 className="h-8 w-8 mx-auto mb-2 text-forest-soft" />
-            <h2 className="text-lg font-black">AI 旅游助理</h2>
-            <p className="text-sm text-forest-pale mt-1">菜单翻译 · 韩语口语练习</p>
+    <div className="flex flex-col min-h-dvh bg-cream">
+      {/* Header */}
+      <div className="px-5 pt-safe pt-4 pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black text-ink tracking-tight">AI 翻译</h1>
+            <p className="text-xs text-ink-muted mt-0.5">扫描韩文 · 即时翻译 🔍</p>
+          </div>
+          <div className="flex -space-x-2">
+            {members.slice(0, 4).map((m) => (
+              <div key={m.id} className={`h-8 w-8 rounded-full bg-gradient-to-br ${m.color} flex items-center justify-center text-sm ring-2 ring-cream`}>
+                {m.emoji}
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Tool switcher */}
-        <div className="flex rounded-2xl bg-neutral-100 p-1 gap-1">
-          <button
-            onClick={() => setActiveTool("translator")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all",
-              activeTool === "translator" ? "bg-white text-gray-900 shadow-sm" : "text-neutral-500"
-            )}
-          >
-            <Languages className="h-4 w-4" /> 菜单翻译
+      {/* Tab switcher */}
+      <div className="px-4 pt-3 pb-4">
+        <div className="tab-bar">
+          <button onClick={() => setActiveTool("camera")}
+            className={activeTool === "camera" ? "tab-item-active" : "tab-item-inactive"}>
+            <Camera className="h-4 w-4" />
+            <span className="text-xs font-bold">扫描翻译</span>
           </button>
-          <button
-            onClick={() => setActiveTool("voice")}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all",
-              activeTool === "voice" ? "bg-white text-gray-900 shadow-sm" : "text-neutral-500"
-            )}
-          >
-            <Mic className="h-4 w-4" /> 韩语助手
+          <button onClick={() => setActiveTool("voice")}
+            className={activeTool === "voice" ? "tab-item-active" : "tab-item-inactive"}>
+            <Mic className="h-4 w-4" />
+            <span className="text-xs font-bold">韩语助手</span>
           </button>
         </div>
+      </div>
 
-        {activeTool === "translator" ? <MenuTranslator /> : <VoiceHelper />}
+      {/* Content */}
+      <div className="flex-1 px-4 pb-safe">
+        {activeTool === "camera" ? <CameraTranslator /> : <VoiceHelper />}
       </div>
     </div>
   );

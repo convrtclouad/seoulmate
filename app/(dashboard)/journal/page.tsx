@@ -6,8 +6,8 @@ import { useMembers } from "@/lib/hooks/useMembers";
 import { format, addDays, differenceInDays } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
-const TRIP_START = new Date("2026-05-08");
-const TRIP_END   = new Date("2026-05-16");
+const TRIP_START = new Date("2026-05-07");
+const TRIP_END   = new Date("2026-05-15");
 const TRIP_DAYS  = Array.from({ length: differenceInDays(TRIP_END, TRIP_START) + 1 }, (_, i) => addDays(TRIP_START, i));
 const LS_KEY     = "seoulmate_journal";
 

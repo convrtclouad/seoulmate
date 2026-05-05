@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, List, BarChart3 } from "lucide-react";
+import { Plus, List, BarChart3, RefreshCw } from "lucide-react";
 import { useExpenses, useAddExpense } from "@/lib/hooks/useExpenses";
 import { useMembers } from "@/lib/hooks/useMembers";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
@@ -19,7 +19,47 @@ const CAT_BG: Record<string, string> = {
   accommodation: "bg-lavender-100", entertainment: "bg-sage-100", health: "bg-petal-50", other: "bg-black/5",
 };
 
+// Fixed member pill colours when selected (solid, readable)
+const MEMBER_SELECTED_BG = [
+  "bg-sage-500",
+  "bg-mist-500",
+  "bg-lavender",
+  "bg-ginger-500",
+  "bg-petal-400",
+];
+
 type Tab = "list" | "debts";
+
+/* ── MYR→KRW rate hook ── */
+function useMyrRate() {
+  const [rate, setRate]       = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function fetchRate() {
+    setLoading(true);
+    try {
+      // Check cache (valid for 24h)
+      const cached = localStorage.getItem("seoulmate_myr_rate");
+      if (cached) {
+        const { rate: r, ts } = JSON.parse(cached) as { rate: number; ts: number };
+        if (Date.now() - ts < 86_400_000) { setRate(r); setLoading(false); return; }
+      }
+      const res  = await fetch("https://open.er-api.com/v6/latest/MYR");
+      const json = await res.json();
+      const r    = Math.round(json.rates?.KRW ?? 310);
+      localStorage.setItem("seoulmate_myr_rate", JSON.stringify({ rate: r, ts: Date.now() }));
+      setRate(r);
+    } catch {
+      setRate(310); // fallback estimate
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchRate(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { rate, loading, refresh: fetchRate };
+}
 
 export default function ExpensesPage() {
   const [tab, setTab]           = useState<Tab>("list");
@@ -30,6 +70,7 @@ export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpenses(TRIP_ID);
   const { data: members = [] }             = useMembers();
   const addExpense = useAddExpense(TRIP_ID);
+  const { rate: myrRate, loading: rateLoading, refresh: refreshRate } = useMyrRate();
 
   useEffect(() => {
     setCurrentId(localStorage.getItem("seoulmate_user") ?? members[0]?.id ?? "");
@@ -65,6 +106,29 @@ export default function ExpensesPage() {
         </div>
       </div>
 
+      {/* MYR→KRW rate banner */}
+      <div className="mx-4 mb-2 rounded-2xl bg-surface px-4 py-2.5 flex items-center justify-between"
+           style={{ boxShadow: "var(--shadow-card)" }}>
+        <div className="flex items-center gap-2">
+          <span className="text-base">🇲🇾</span>
+          <div>
+            <p className="text-[10px] text-ink-faint font-semibold uppercase tracking-wider">实时汇率</p>
+            {rateLoading ? (
+              <p className="text-xs text-ink-muted">载入中…</p>
+            ) : (
+              <p className="text-sm font-black text-ink">
+                1 MYR = <span className="text-petal-400">₩{myrRate?.toLocaleString("ko-KR")}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        <button onClick={refreshRate}
+          className="p-2 rounded-xl bg-black/5 hover:bg-black/10 transition-colors"
+          disabled={rateLoading}>
+          <RefreshCw className={`h-3.5 w-3.5 text-ink-muted ${rateLoading ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+
       {/* Total card */}
       <div className="mx-4 mb-3 rounded-3xl px-5 py-4 relative overflow-hidden"
            style={{ background: "linear-gradient(135deg, #E87060, #F4B5A5)", boxShadow: "0 8px 28px rgba(232,112,96,0.25)" }}>
@@ -73,6 +137,11 @@ export default function ExpensesPage() {
         <p className="text-4xl font-black text-white mt-1 tracking-tight">
           ₩{totalKrw.toLocaleString("ko-KR")}
         </p>
+        {myrRate && totalKrw > 0 && (
+          <p className="text-white/60 text-xs mt-0.5">
+            ≈ RM {(totalKrw / myrRate).toLocaleString("ms-MY", { maximumFractionDigits: 2 })}
+          </p>
+        )}
         <p className="text-white/60 text-xs mt-1">{filtered.length} 笔消费</p>
       </div>
 
@@ -85,14 +154,23 @@ export default function ExpensesPage() {
             }`} style={{ boxShadow: "var(--shadow-card)" }}>
             全部
           </button>
-          {members.map((m) => (
-            <button key={m.id} onClick={() => setFilterMember(filterMember === m.id ? null : m.id)}
-              className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
-                filterMember === m.id ? `bg-gradient-to-r ${m.color} text-white` : "bg-surface text-ink-muted"
-              }`} style={{ boxShadow: "var(--shadow-card)" }}>
-              <span>{m.emoji}</span>{m.name}
-            </button>
-          ))}
+          {members.map((m, idx) => {
+            const isSelected = filterMember === m.id;
+            const selectedBg = MEMBER_SELECTED_BG[idx % MEMBER_SELECTED_BG.length];
+            return (
+              <button key={m.id}
+                onClick={() => setFilterMember(isSelected ? null : m.id)}
+                className={`shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all ${
+                  isSelected
+                    ? `${selectedBg} text-white`
+                    : "bg-surface text-ink-mid"
+                }`}
+                style={{ boxShadow: isSelected ? "0 3px 12px rgba(0,0,0,0.18)" : "var(--shadow-card)" }}>
+                <span>{m.emoji}</span>
+                <span>{m.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -123,6 +201,7 @@ export default function ExpensesPage() {
             <div className="space-y-2.5">
               {filtered.map((exp) => {
                 const payer = members.find(m => m.id === exp.paid_by);
+                const myrEquiv = myrRate ? (exp.amount_krw / myrRate).toFixed(2) : null;
                 return (
                   <div key={exp.id} className="rounded-3xl bg-surface p-4 flex items-center gap-3"
                        style={{ boxShadow: "var(--shadow-card)" }}>
@@ -136,6 +215,9 @@ export default function ExpensesPage() {
                         <span className="text-xs text-ink-muted">{payer?.name ?? exp.paid_by} 付款</span>
                         <span className="text-ink-faint text-xs">· {exp.expense_date}</span>
                       </div>
+                      {myrEquiv && (
+                        <p className="text-[10px] text-ink-faint mt-0.5">≈ RM {myrEquiv}</p>
+                      )}
                     </div>
                     <span className="font-black text-ink text-sm whitespace-nowrap">
                       ₩{exp.amount_krw.toLocaleString("ko-KR")}
