@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 const NAV_ITEMS = [
-  { href: "/",         label: "Home",     icon: Home },
+  { href: "/home",     label: "Home",     icon: Home },
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/ai-tools", label: "AI",       icon: Wand2 },
@@ -23,9 +23,7 @@ export function BottomNav() {
          style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}>
       <div className="flex items-stretch h-16 max-w-lg mx-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(href);
+          const active = pathname === href || (href !== "/home" && pathname.startsWith(href));
 
           return (
             <Link

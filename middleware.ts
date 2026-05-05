@@ -43,6 +43,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // Redirect / to /home
+  if (request.nextUrl.pathname === "/") {
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = "/home";
+    return NextResponse.redirect(homeUrl);
+  }
+
   return response;
 }
 

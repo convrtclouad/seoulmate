@@ -1,3 +1,6 @@
-// This file intentionally empty — the / route is served by app/(dashboard)/page.tsx
-// Auth redirect is handled by middleware.ts
-export { default } from "./(dashboard)/page";
+import { redirect } from "next/navigation";
+
+// Root redirects to /home; actual dashboard is rendered by (dashboard)/page.tsx
+export default function RootPage() {
+  redirect("/home");
+}
