@@ -55,8 +55,8 @@ export function CameraTranslator() {
       img.src = canvas.toDataURL("image/jpeg", 0.8);
       await new Promise<void>((res) => { img.onload = () => res(); });
 
-      // @ts-expect-error – experimental
-      const detector = new TextDetector();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const detector = new (window as any).TextDetector();
       const results: Array<{ rawValue: string }> = await detector.detect(img);
       const text = results.map((r) => r.rawValue).join("\n").trim();
       if (text) setDetectedText(text);

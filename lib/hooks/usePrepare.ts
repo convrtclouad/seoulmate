@@ -9,7 +9,7 @@ export interface PrepareItem {
   category: PrepareCategory;
   text: string;
   done: boolean;
-  assignee?: string; // member id
+  assignees: string[]; // member ids — empty = everyone
   created_at: string;
 }
 
@@ -20,8 +20,14 @@ function genId() { return Math.random().toString(36).slice(2, 9) + Date.now().to
 
 function load(): PrepareItem[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]"); }
-  catch { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
+    // Migrate old items that used `assignee` (single string) → `assignees` (array)
+    return raw.map((i: PrepareItem & { assignee?: string }) => ({
+      ...i,
+      assignees: i.assignees ?? (i.assignee ? [i.assignee] : []),
+    }));
+  } catch { return []; }
 }
 
 function save(items: PrepareItem[]) {
@@ -35,9 +41,16 @@ export function usePrepare() {
 export function useAddPrepareItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (item: { category: PrepareCategory; text: string; assignee?: string }) => {
+    mutationFn: async (item: { category: PrepareCategory; text: string; assignees?: string[] }) => {
       const all = load();
-      const newItem: PrepareItem = { id: genId(), ...item, done: false, created_at: new Date().toISOString() };
+      const newItem: PrepareItem = {
+        id: genId(),
+        category: item.category,
+        text: item.text,
+        done: false,
+        assignees: item.assignees ?? [],
+        created_at: new Date().toISOString(),
+      };
       all.push(newItem);
       save(all);
       return newItem;

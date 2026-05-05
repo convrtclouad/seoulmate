@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus, X, ChevronRight } from "lucide-react";
+import { Check, Plus, X, ChevronRight, AlertCircle } from "lucide-react";
+import { tap, warn, success } from "@/lib/utils/haptics";
 import { getMembersSync, EMOJI_OPTIONS, COLOR_OPTIONS } from "@/lib/hooks/useMembers";
 import type { Member } from "@/lib/hooks/useMembers";
 
@@ -18,6 +19,7 @@ export default function IntroPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [entering, setEntering] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newEmoji, setNewEmoji] = useState("🐱");
   const [newColor, setNewColor] = useState(COLOR_OPTIONS[0]);
@@ -29,9 +31,11 @@ export default function IntroPage() {
   }, [router]);
 
   function removeMember(id: string) {
+    warn();
     const updated = members.filter((m) => m.id !== id);
     setMembers(updated); saveMembers(updated);
     if (selected === id) setSelected(null);
+    setConfirmDelete(null);
   }
 
   function addMember() {
@@ -44,6 +48,7 @@ export default function IntroPage() {
 
   function handleEnter() {
     if (!selected || entering) return;
+    success();
     setEntering(true);
     localStorage.setItem("seoulmate_user", selected);
     const m = members.find(f => f.id === selected);
@@ -81,8 +86,8 @@ export default function IntroPage() {
             const isSelected = selected === m.id;
             return (
               <div key={m.id} role="button" tabIndex={0}
-                onClick={() => setSelected(m.id)}
-                onKeyDown={(e) => e.key === "Enter" && setSelected(m.id)}
+                onClick={() => { tap(); setSelected(m.id); }}
+                onKeyDown={(e) => e.key === "Enter" && (tap(), setSelected(m.id))}
                 className="relative flex flex-col items-center gap-3 rounded-3xl pt-6 pb-4 px-4 bg-surface transition-all duration-200 active:scale-95 cursor-pointer select-none"
                 style={{
                   boxShadow: isSelected
@@ -91,12 +96,25 @@ export default function IntroPage() {
                   background: isSelected ? "#F4FAF5" : "white",
                 }}
               >
-                {/* Remove button */}
+                {/* Remove button — requires confirmation */}
                 {members.length > 1 && (
-                  <button onClick={(e) => { e.stopPropagation(); removeMember(m.id); }}
-                    className="absolute top-2.5 left-2.5 h-6 w-6 rounded-full bg-black/6 flex items-center justify-center z-10">
-                    <X className="h-3 w-3 text-ink-muted" />
-                  </button>
+                  confirmDelete === m.id ? (
+                    <div className="absolute top-2 left-2 z-10 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => removeMember(m.id)}
+                        className="h-6 rounded-full bg-petal-400 text-white text-[10px] font-bold px-2 flex items-center gap-0.5">
+                        <AlertCircle className="h-3 w-3" /> 删除
+                      </button>
+                      <button onClick={() => { tap(); setConfirmDelete(null); }}
+                        className="h-6 w-6 rounded-full bg-black/10 flex items-center justify-center">
+                        <X className="h-3 w-3 text-ink-muted" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={(e) => { e.stopPropagation(); tap(); setConfirmDelete(m.id); }}
+                      className="absolute top-2.5 left-2.5 h-6 w-6 rounded-full bg-black/6 flex items-center justify-center z-10">
+                      <X className="h-3 w-3 text-ink-muted" />
+                    </button>
+                  )
                 )}
                 {/* Check mark */}
                 {isSelected && (

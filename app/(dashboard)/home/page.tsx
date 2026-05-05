@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Plus, MapPin, Camera } from "lucide-react";
+import { tap } from "@/lib/utils/haptics";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSchedule";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ActivityForm } from "@/components/schedule/ActivityForm";
 import { WeatherWidget } from "@/components/weather/WeatherWidget";
-import { format, parseISO, differenceInDays, addDays, isSameDay } from "date-fns";
+import { format, parseISO, differenceInDays, addDays, isSameDay, isToday } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 
@@ -201,8 +202,8 @@ export default function HomePage() {
       {/* ── Day activities ── */}
       <div className="px-4 pb-safe flex-1">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="section-title">{format(selectedDay, "M月d日")} 行程</h2>
-          <button onClick={() => setShowForm(true)}
+          <h2 className="section-title">{isToday(selectedDay) ? "今日行程" : `${format(selectedDay, "M月d日")} 行程`}</h2>
+          <button onClick={() => { tap(); setShowForm(true); }}
             className="flex items-center gap-1.5 bg-sage text-white text-xs font-bold rounded-2xl px-3 py-2"
             style={{ boxShadow: "0 4px 12px rgba(91,136,98,0.30)" }}>
             <Plus className="h-3.5 w-3.5" /> 新增
