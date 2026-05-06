@@ -417,7 +417,7 @@ export default function JournalPage() {
 
       {/* FAB */}
       <button onClick={() => { tap(); setShowWrite(true); }}
-        className="fixed bottom-24 right-5 h-14 w-14 rounded-full text-white flex items-center justify-center z-30"
+        className="fixed bottom-32 right-5 h-14 w-14 rounded-full text-white flex items-center justify-center z-30"
         style={{ background: "#8B7AB8", boxShadow: "0 6px 24px rgba(139,122,184,0.35)" }}>
         {myPost ? <Pencil className="h-5 w-5" /> : <Plus className="h-6 w-6" />}
       </button>

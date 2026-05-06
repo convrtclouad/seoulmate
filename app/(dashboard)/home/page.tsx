@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, MapPin, Camera, Heart, ChevronRight } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Plus, MapPin, Camera, Heart, ChevronRight, Navigation } from "lucide-react";
 import { tap } from "@/lib/utils/haptics";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSupabaseSchedule";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
@@ -41,7 +41,98 @@ function getGreeting(): string {
   return "晚上好";
 }
 
-/* ── Dual timezone clock ── */
+function wmoToEmoji(code: number): string {
+  if (code === 0)  return "☀️";
+  if (code <= 2)   return "🌤️";
+  if (code === 3)  return "☁️";
+  if (code <= 48)  return "🌫️";
+  if (code <= 55)  return "🌦️";
+  if (code <= 65)  return "🌧️";
+  if (code <= 75)  return "❄️";
+  if (code <= 82)  return "🌦️";
+  return "⛈️";
+}
+function wmoToLabel(code: number): string {
+  if (code === 0)  return "晴朗";
+  if (code <= 2)   return "少云";
+  if (code === 3)  return "多云";
+  if (code <= 48)  return "有雾";
+  if (code <= 55)  return "小雨";
+  if (code <= 65)  return "雨天";
+  if (code <= 75)  return "下雪";
+  if (code <= 82)  return "阵雨";
+  return "雷雨";
+}
+function wmoAnim(code: number): string {
+  if (code === 0)        return "anim-sun";
+  if (code >= 51)        return "anim-rain";
+  return "anim-float";
+}
+
+interface WeatherData { temp: number; code: number; }
+
+async function fetchWeather(lat: number, lon: number): Promise<WeatherData> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=Asia%2FSeoul`;
+  const res  = await fetch(url);
+  const json = await res.json();
+  return { temp: Math.round(json.current.temperature_2m), code: json.current.weather_code };
+}
+
+/* ── Weather Widget ── */
+function WeatherWidget() {
+  const [seoul,  setSeoul]  = useState<WeatherData | null>(null);
+  const [busan,  setBusan]  = useState<WeatherData | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      fetchWeather(37.5665, 126.9780),
+      fetchWeather(35.1796, 129.0756),
+    ]).then(([s, b]) => {
+      setSeoul(s); setBusan(b); setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, []);
+
+  if (!loaded) {
+    return (
+      <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
+        {["首尔", "釜山"].map(c => (
+          <div key={c} className="rounded-3xl h-20 animate-pulse"
+               style={{ background: "linear-gradient(135deg,#3A7BD5,#5B9BE5)" }} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
+      {[
+        { city: "首尔", en: "Seoul", data: seoul },
+        { city: "釜山", en: "Busan", data: busan },
+      ].map(({ city, en, data }) => (
+        <div key={en} className="rounded-3xl overflow-hidden"
+             style={{ background: "linear-gradient(135deg, #3A7BD5 0%, #5B9BE5 100%)", boxShadow: "0 6px 20px rgba(58,123,213,0.25)" }}>
+          <div className="px-4 py-3">
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider">{city} · {en}</p>
+            <div className="flex items-end justify-between mt-1">
+              <p className="text-white font-black text-3xl leading-none">
+                {data ? `${data.temp}°` : "—"}
+              </p>
+              <span className={`text-2xl ${data ? wmoAnim(data.code) : ""}`}>
+                {data ? wmoToEmoji(data.code) : "🌡️"}
+              </span>
+            </div>
+            <p className="text-white/60 text-[10px] mt-1.5 font-semibold">
+              {data ? wmoToLabel(data.code) : "获取中…"}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Dual timezone clock — Seoul primary, KL secondary ── */
 function DualClock() {
   const [klTime, setKL] = useState("");
   const [krTime, setKR] = useState("");
@@ -62,112 +153,155 @@ function DualClock() {
 
   if (!klTime) return null;
   return (
-    <div className="flex items-center gap-2 mt-2">
-      <div className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-3 py-1.5"
+    <div className="mt-2 flex items-center gap-2">
+      {/* Seoul — primary */}
+      <div className="inline-flex items-center gap-1.5 rounded-2xl px-3 py-1.5"
+           style={{ background: "rgba(91,136,98,0.12)" }}>
+        <span className="text-sm">🇰🇷</span>
+        <span className="text-sm font-black text-ink">首尔 {krTime}</span>
+      </div>
+      {/* KL — secondary */}
+      <div className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-2.5 py-1.5"
            style={{ boxShadow: "var(--shadow-card)" }}>
         <span className="text-xs">🇲🇾</span>
-        <span className="text-xs font-bold text-ink-mid">KL {klTime}</span>
-      </div>
-      <div className="inline-flex items-center gap-1.5 rounded-2xl bg-surface px-3 py-1.5"
-           style={{ boxShadow: "var(--shadow-card)" }}>
-        <span className="text-xs">🇰🇷</span>
-        <span className="text-xs font-bold text-ink-mid">首尔 {krTime}</span>
+        <span className="text-xs font-semibold text-ink-mid">KL {klTime}</span>
       </div>
     </div>
   );
 }
 
-/* ── Sangsu neighbourhood mini-map card ── */
-function MapPreviewCard() {
-  return (
-    <Link href="/map" className="mx-4 mb-4 block rounded-3xl overflow-hidden relative active:scale-[0.98] transition-transform"
-          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.10)" }}>
-      {/* Sky gradient background */}
-      <div style={{ background: "linear-gradient(160deg, #B8D4F0 0%, #D4E8F8 40%, #E8F4E8 100%)", minHeight: 140 }}
-           className="relative p-4">
-        {/* Decorative buildings silhouette */}
-        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-around px-2 opacity-20">
-          {[32,48,28,56,36,42,26,50,30].map((h, i) => (
-            <div key={i} style={{ height: h, width: 18, background: "#3A5D40", borderRadius: "4px 4px 0 0" }} />
-          ))}
-        </div>
+/* ── Real-time GPS location card ── */
+function LocationCard() {
+  const [place,  setPlace]  = useState<{ district: string; city: string } | null>(null);
+  const [status, setStatus] = useState<"idle" | "loading" | "ok" | "denied">("idle");
+  const watchRef = useRef<number | null>(null);
 
-        {/* Station pin */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-          <div className="h-10 w-10 rounded-full bg-sage flex items-center justify-center shadow-lg"
-               style={{ boxShadow: "0 4px 20px rgba(91,136,98,0.5)" }}>
-            <span className="text-lg">🏠</span>
-          </div>
-          <div className="mt-1.5 bg-white rounded-xl px-2.5 py-1 shadow"
-               style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-            <p className="text-[10px] font-black text-ink">상수역 · 合水站</p>
-          </div>
-        </div>
-
-        {/* Nearby dots */}
-        <div className="absolute top-5 left-10 h-3 w-3 rounded-full bg-petal-400 shadow-sm opacity-70" title="홍대" />
-        <div className="absolute top-8 right-12 h-3 w-3 rounded-full bg-ginger-400 shadow-sm opacity-70" title="신촌" />
-        <div className="absolute bottom-10 left-16 h-2.5 w-2.5 rounded-full bg-lavender shadow-sm opacity-70" />
-
-        {/* Top-right label */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-2xl px-2.5 py-1"
-             style={{ boxShadow: "var(--shadow-card)" }}>
-          <MapPin className="h-3 w-3 text-sage" />
-          <span className="text-[10px] font-bold text-ink">上水洞 Sangsu</span>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="bg-surface px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-xs font-bold text-ink">我们住在这里 🏠</p>
-          <p className="text-[10px] text-ink-muted mt-0.5">연세로 2나길 · Yonsei-ro, Mapo-gu</p>
-        </div>
-        <div className="flex items-center gap-1 text-sage text-xs font-bold">
-          查看地图 <ChevronRight className="h-3.5 w-3.5" />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ── Malaysia return countdown bar ── */
-function MalaysiaCountdown() {
-  const now      = new Date();
-  const daysBack = differenceInDays(TRIP_END, now);
-  const inTrip   = now >= TRIP_START && now <= TRIP_END;
-  const returned = now > TRIP_END;
-
-  if (returned) return null;
-
-  // Progress through trip (0–1)
-  const tripLen  = differenceInDays(TRIP_END, TRIP_START);
-  const elapsed  = Math.max(0, differenceInDays(now, TRIP_START));
-  const progress = inTrip ? elapsed / tripLen : 0;
+  useEffect(() => {
+    if (!navigator.geolocation) { setStatus("denied"); return; }
+    setStatus("loading");
+    watchRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res  = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=zh`,
+            { headers: { "User-Agent": "SeoulMateApp/1.0" } }
+          );
+          const json = await res.json();
+          const addr = json.address ?? {};
+          setPlace({
+            district: addr.neighbourhood ?? addr.suburb ?? addr.village ?? addr.town ?? addr.county ?? "当前位置",
+            city:     addr.city ?? addr.state ?? addr.country ?? "",
+          });
+          setStatus("ok");
+        } catch { setStatus("ok"); }
+      },
+      () => setStatus("denied"),
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+    return () => {
+      if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
+    };
+  }, []);
 
   return (
     <div className="mx-4 mb-4 rounded-3xl overflow-hidden"
-         style={{ background: "linear-gradient(135deg, #2C3E6B 0%, #3D5A9A 100%)", boxShadow: "0 8px 28px rgba(44,62,107,0.25)" }}>
-      <div className="px-5 py-3.5 flex items-center gap-4">
-        <span className="text-2xl shrink-0">🇲🇾</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <p className="text-white/80 text-xs font-semibold">
-              {inTrip ? "还有多久回马来西亚" : "距离返程"}
-            </p>
-            <p className="text-white font-black text-lg leading-none">
-              {daysBack > 0 ? `${daysBack} 天` : "今天回家！"}
-            </p>
+         style={{ background: "linear-gradient(160deg, #B8D4F0 0%, #D4E8F8 40%, #E8F4E8 100%)", boxShadow: "0 8px 32px rgba(0,0,0,0.10)" }}>
+      <div className="relative p-4 min-h-[110px]">
+        {/* Grid lines */}
+        <div className="absolute inset-0 opacity-10">
+          {[25, 50, 75].map(p => (
+            <div key={p} className="absolute inset-x-0 border-t border-blue-400" style={{ top: `${p}%` }} />
+          ))}
+          {[33, 66].map(p => (
+            <div key={p} className="absolute inset-y-0 border-l border-blue-400" style={{ left: `${p}%` }} />
+          ))}
+        </div>
+
+        {/* Location pin */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+          <div className="h-11 w-11 rounded-full bg-sage flex items-center justify-center shadow-lg"
+               style={{ boxShadow: "0 4px 20px rgba(91,136,98,0.5)" }}>
+            {status === "loading"
+              ? <span className="text-white font-bold anim-spin-slow">◌</span>
+              : <Navigation className="h-5 w-5 text-white" />}
           </div>
-          {inTrip && (
-            <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
-              <div className="h-full rounded-full bg-white/70 transition-all duration-500"
-                   style={{ width: `${progress * 100}%` }} />
-            </div>
+          {status === "ok" && (
+            <div className="absolute h-11 w-11 rounded-full border-2 border-sage/40 anim-ripple" />
           )}
-          <p className="text-white/50 text-[10px] mt-1">
+        </div>
+
+        {/* Nearby dots */}
+        <div className="absolute top-5 left-10 h-3 w-3 rounded-full bg-petal-400/70 shadow-sm" />
+        <div className="absolute top-8 right-12 h-3 w-3 rounded-full bg-ginger-400/70 shadow-sm" />
+        <div className="absolute bottom-10 left-16 h-2.5 w-2.5 rounded-full bg-lavender/70 shadow-sm" />
+
+        {/* District label */}
+        {status === "ok" && place && (
+          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-2xl px-2.5 py-1"
+               style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+            <p className="text-[10px] font-black text-ink">{place.district}</p>
+          </div>
+        )}
+
+        {/* Status dot */}
+        <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/80 backdrop-blur-sm rounded-2xl px-2 py-1"
+             style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className={`h-1.5 w-1.5 rounded-full ${status === "ok" ? "bg-sage anim-blink" : status === "loading" ? "bg-ginger-400" : "bg-ink-faint"}`} />
+          <span className="text-[9px] font-bold text-ink-mid">
+            {status === "ok" ? "实时定位" : status === "loading" ? "定位中" : "无法定位"}
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-surface px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold text-ink">我们现在在这里 📍</p>
+          <p className="text-[10px] text-ink-muted mt-0.5">
+            {status === "ok" && place
+              ? `${place.district}${place.city ? ` · ${place.city}` : ""}`
+              : status === "loading" ? "正在获取位置…"
+              : status === "denied"  ? "请允许位置权限"
+              : "获取中…"}
+          </p>
+        </div>
+        <Link href="/map" className="flex items-center gap-1 text-sage text-xs font-bold">
+          查看地图 <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ── Malaysia return countdown ── */
+function MalaysiaCountdown() {
+  const now      = new Date();
+  const daysBack = differenceInDays(TRIP_END, now);
+  const returned = now > TRIP_END;
+  if (returned) return null;
+
+  return (
+    <div className="mx-4 mb-4 rounded-3xl overflow-hidden"
+         style={{ background: "linear-gradient(135deg, #1A2A5E 0%, #2C3E6B 60%, #3D5A9A 100%)", boxShadow: "0 8px 28px rgba(44,62,107,0.30)" }}>
+      <div className="px-5 py-4 flex items-center gap-4">
+        <span className="text-3xl shrink-0">🇲🇾</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-white/50 text-[10px] font-bold uppercase tracking-widest mb-1">距离返程</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-5xl font-black text-white leading-none">
+              {daysBack > 0 ? daysBack : "0"}
+            </span>
+            <span className="text-white/70 text-xl font-bold">天</span>
+          </div>
+          <p className="text-white/40 text-[10px] mt-1.5">
             {format(TRIP_END, "M月d日")} 返回吉隆坡 ✈️
           </p>
+        </div>
+        <div className="shrink-0 flex flex-col items-center">
+          <p className="text-white/30 text-[9px] font-bold mb-1">MAY</p>
+          <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10">
+            <span className="text-white font-black text-2xl">15</span>
+          </div>
         </div>
       </div>
     </div>
@@ -218,8 +352,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── Map preview at the top ── */}
-      <MapPreviewCard />
+      {/* ── Weather ── */}
+      <WeatherWidget />
+
+      {/* ── Real-time location ── */}
+      <LocationCard />
 
       {/* ── Malaysia return countdown ── */}
       <MalaysiaCountdown />
@@ -242,18 +379,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* During trip banner */}
-      {daysLeft <= 0 && new Date() <= TRIP_END && (
-        <div className="mx-4 mb-4 rounded-3xl px-5 py-3 flex items-center gap-3"
-             style={{ background: "linear-gradient(135deg, #5B8862, #4A9592)", boxShadow: "0 8px 24px rgba(91,136,98,0.25)" }}>
-          <span className="text-3xl animate-plane-bob inline-block">✈️</span>
-          <div>
-            <p className="text-white font-bold text-sm">旅程进行中！</p>
-            <p className="text-white/70 text-xs">享受首尔每一刻 🌟</p>
-          </div>
-        </div>
-      )}
-
       {/* ── Quick actions ── */}
       <div className="flex gap-2 px-4 mb-4">
         <Link href="/ai-tools"
@@ -261,7 +386,7 @@ export default function HomePage() {
           style={{ boxShadow: "var(--shadow-card)" }}>
           <Camera className="h-4 w-4 text-lavender" /> AI 翻译
         </Link>
-        <Link href="/wishlist"
+        <Link href="/prepare"
           className="flex-1 flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm font-semibold text-ink-mid"
           style={{ boxShadow: "var(--shadow-card)" }}>
           <Heart className="h-4 w-4 text-petal-400" /> 心愿打卡
@@ -370,8 +495,18 @@ export default function HomePage() {
       </Modal>
 
       <style>{`
-        @keyframes plane-bob { 0%,100%{transform:translateY(0) rotate(-4deg);} 50%{transform:translateY(-10px) rotate(2deg);} }
-        .animate-plane-bob { animation: plane-bob 2.2s ease-in-out infinite; }
+        .anim-sun  { animation: sunSpin  8s linear        infinite; display:inline-block; }
+        .anim-float{ animation: floatBob 3s ease-in-out   infinite; display:inline-block; }
+        .anim-rain { animation: rainDrop 1.4s ease-in-out infinite; display:inline-block; }
+        .anim-ripple     { animation: rippleOut 2s ease-out infinite; }
+        .anim-spin-slow  { animation: spinSlow  1s linear  infinite; display:inline-block; }
+        .anim-blink      { animation: blinkDot  2s ease-in-out infinite; }
+        @keyframes sunSpin  { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
+        @keyframes floatBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes rainDrop { 0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)} }
+        @keyframes rippleOut{ 0%{transform:scale(1);opacity:.6} 100%{transform:scale(2.5);opacity:0} }
+        @keyframes spinSlow { from{transform:rotate(0)}   to{transform:rotate(360deg)} }
+        @keyframes blinkDot { 0%,100%{opacity:1} 50%{opacity:.3} }
       `}</style>
     </div>
   );

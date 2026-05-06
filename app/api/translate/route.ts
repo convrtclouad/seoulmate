@@ -21,22 +21,30 @@ export async function POST(req: NextRequest) {
     const mimeType = image.type || "image/jpeg";
 
     const prompt = `
-You are a Korean menu translator. Analyze this menu image and return a JSON object with this exact structure:
+You are a Korean text translator helping tourists in Korea. Analyze this image and extract ALL visible Korean text — including menus, street signs, shop names, banners, labels, price tags, or any other text.
+
+Return a JSON object with this exact structure:
 {
-  "restaurant": "restaurant name if visible, otherwise null",
+  "restaurant": "restaurant or shop name if visible, otherwise null",
   "items": [
     {
-      "korean": "Korean text",
+      "korean": "original Korean text as seen in image",
       "english": "English translation",
-      "description": "Brief description of the dish, ingredients, and cooking method",
+      "description": "Brief helpful description: what it is, where it leads, what it means, or ingredients/cooking if food",
       "spiciness": 0,
       "allergens": [],
-      "price": "price if visible, e.g. ₩15,000"
+      "price": "price if visible, e.g. ₩15,000, otherwise null"
     }
   ]
 }
-spiciness: 0=not spicy, 1=mild, 2=medium, 3=hot
-allergens: list any of [gluten, dairy, eggs, soy, nuts, shellfish, fish, peanuts]
+
+Rules:
+- For FOOD items: include spiciness (0=not spicy,1=mild,2=medium,3=hot), allergens from [gluten,dairy,eggs,soy,nuts,shellfish,fish,peanuts]
+- For SIGNS/DIRECTIONS: set spiciness=0, allergens=[], describe what the sign means or where it points
+- For SHOP NAMES: describe what kind of shop it is
+- For PRICES/LABELS: translate and explain
+- Include every piece of Korean text visible, even partial words
+- If no Korean text found, return { "restaurant": null, "items": [] }
 Return ONLY valid JSON. No markdown, no extra text.
     `.trim();
 

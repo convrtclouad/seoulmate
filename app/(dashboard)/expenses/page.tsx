@@ -258,7 +258,7 @@ export default function ExpensesPage() {
 
       {/* FAB */}
       <button onClick={() => setShowForm(true)}
-        className="fixed bottom-24 right-5 h-14 w-14 rounded-full text-white flex items-center justify-center z-30"
+        className="fixed bottom-32 right-5 h-14 w-14 rounded-full text-white flex items-center justify-center z-30"
         style={{ background: "linear-gradient(135deg, #E87060, #EE9080)", boxShadow: "0 6px 24px rgba(232,112,96,0.35)" }}>
         <Plus className="h-6 w-6" />
       </button>
