@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Plane, Hotel, Car, Ticket, X } from "lucide-react";
 import { useBookings, useAddBooking, useRemoveBooking } from "@/lib/hooks/useSupabaseBookings";
 import type { BookingType, Booking } from "@/lib/hooks/useSupabaseBookings";
 import { useMembers } from "@/lib/hooks/useSupabaseMembers";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
+
+const TRIP_ID = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 
 const TABS: { key: BookingType; label: string; icon: React.ElementType; color: string; bg: string }[] = [
   { key: "flight",  label: "机票", icon: Plane,  color: "text-sage-600",   bg: "bg-sage-100"   },
@@ -14,40 +18,124 @@ const TABS: { key: BookingType; label: string; icon: React.ElementType; color: s
   { key: "voucher", label: "票券", icon: Ticket, color: "text-petal-400",  bg: "bg-petal-100"  },
 ];
 
-/* ── Fixed KLIA→ICN flight (editable details) ── */
-const LS_FLIGHT_KEY = "seoulmate_d7505_details";
-
 interface FlightDetails {
   depTime: string;
   arrTime: string;
   baggage: string;
-  seat: string;
-  notes: string;
+  seat:    string;
+  notes:   string;
+}
+const DEFAULT_DETAILS: FlightDetails = { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
+
+/* ── Supabase-backed flight slot hook ── */
+function useFlightSlot(slotId: string) {
+  const qc   = useQueryClient();
+  const sb   = getSupabaseClient();
+  const dbId = `${TRIP_ID}__${slotId}`;
+  const qKey = ["flight_slot", dbId];
+
+  const query = useQuery({
+    queryKey: qKey,
+    queryFn: async () => {
+      if (!hasSupabase()) {
+        try { return JSON.parse(localStorage.getItem(`seoulmate_${slotId}`) ?? "null") ?? DEFAULT_DETAILS; }
+        catch { return DEFAULT_DETAILS; }
+      }
+      const { data } = await sb.from("bookings").select("data").eq("id", dbId).maybeSingle();
+      return (data?.data as FlightDetails) ?? DEFAULT_DETAILS;
+    },
+    staleTime: Infinity,
+  });
+
+  const save = useMutation({
+    mutationFn: async (details: FlightDetails) => {
+      if (!hasSupabase()) {
+        localStorage.setItem(`seoulmate_${slotId}`, JSON.stringify(details));
+        return;
+      }
+      const { error } = await sb.from("bookings").upsert({
+        id: dbId, trip_id: TRIP_ID, type: "flight",
+        title: slotId === "outbound_d7505" ? "KUL→ICN D7 505" : "ICN→KUL D7 505",
+        data: details,
+      }, { onConflict: "id" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qKey }),
+  });
+
+  const refresh = useCallback(() => qc.invalidateQueries({ queryKey: qKey }), [qc, qKey]);
+
+  useEffect(() => {
+    if (!hasSupabase()) return;
+    const ch = sb.channel(`flight_slot_${dbId}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "bookings",
+        filter: `id=eq.${dbId}`,
+      }, refresh)
+      .subscribe();
+    return () => { sb.removeChannel(ch); };
+  }, [sb, dbId, refresh]);
+
+  return { details: query.data ?? DEFAULT_DETAILS, saveDetails: save.mutateAsync, isSaving: save.isPending };
 }
 
-function loadFlightDetails(): FlightDetails {
-  if (typeof window === "undefined") return { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
-  try {
-    return JSON.parse(localStorage.getItem(LS_FLIGHT_KEY) ?? "null") ?? { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
-  } catch { return { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" }; }
+/* ── Shared flight edit sheet ── */
+function FlightEditSheet({ title, draft, setDraft, onSave, onClose, outbound }: {
+  title: string;
+  draft: FlightDetails;
+  setDraft: (fn: (d: FlightDetails) => FlightDetails) => void;
+  onSave: () => void;
+  onClose: () => void;
+  outbound: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.3)" }}
+         onClick={onClose}>
+      <div className="bg-cream rounded-t-4xl p-6 pb-10 animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="w-10 h-1 rounded-full bg-ink-faint mx-auto mb-5" />
+        <h3 className="text-lg font-bold text-ink mb-4">{title}</h3>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">出发时间</label>
+              <input className="input" placeholder={outbound ? "例：23:55" : "例：10:00"} value={draft.depTime}
+                onChange={(e) => setDraft(d => ({ ...d, depTime: e.target.value }))} /></div>
+            <div><label className="label">到达时间</label>
+              <input className="input" placeholder={outbound ? "例：07:30+1" : "例：17:00"} value={draft.arrTime}
+                onChange={(e) => setDraft(d => ({ ...d, arrTime: e.target.value }))} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="label">行李额度</label>
+              <input className="input" placeholder="20kg" value={draft.baggage}
+                onChange={(e) => setDraft(d => ({ ...d, baggage: e.target.value }))} /></div>
+            <div><label className="label">座位号</label>
+              <input className="input" placeholder="例：15A" value={draft.seat}
+                onChange={(e) => setDraft(d => ({ ...d, seat: e.target.value }))} /></div>
+          </div>
+          <div><label className="label">备注</label>
+            <input className="input" placeholder="任何附加信息…" value={draft.notes}
+              onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))} /></div>
+          <div className="flex gap-3 pt-1">
+            <button onClick={onClose} className="btn-secondary flex-1">取消</button>
+            <button onClick={onSave}  className="btn-primary flex-1">保存同步 ☁️</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+/* ── Outbound KUL → ICN ── */
 function FixedFlightCard() {
-  const [details, setDetails] = useState<FlightDetails>(loadFlightDetails());
+  const { details, saveDetails, isSaving } = useFlightSlot("outbound_d7505");
   const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState<FlightDetails>(details);
+  const [draft,   setDraft]   = useState<FlightDetails>(DEFAULT_DETAILS);
 
   function openEdit() { setDraft(details); setEditing(true); }
-  function saveEdit() {
-    setDetails(draft);
-    localStorage.setItem(LS_FLIGHT_KEY, JSON.stringify(draft));
-    setEditing(false);
-  }
+  async function saveEdit() { await saveDetails(draft); setEditing(false); }
 
   return (
     <>
       <div className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 28px rgba(255,0,96,0.13)" }}>
-        {/* Airline header */}
         <div style={{ background: "linear-gradient(135deg, #FF0060, #FF4D94)" }}
              className="px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -55,28 +143,22 @@ function FixedFlightCard() {
             <span className="text-white/60 text-xs font-semibold">X</span>
           </div>
           <div className="text-right">
-            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Flight</p>
+            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Outbound</p>
             <p className="text-white font-black text-base tracking-widest">D7 505</p>
           </div>
         </div>
 
-        {/* Route */}
         <div className="bg-white px-5 py-5">
           <div className="flex items-center gap-3">
-            {/* Departure */}
             <div className="flex-1">
               <p className="text-3xl font-black text-ink">KUL</p>
               <p className="text-xs text-ink-muted mt-1 font-semibold">KLIA · 吉隆坡</p>
-              {details.depTime && (
-                <p className="text-base font-black text-ink mt-1">{details.depTime}</p>
-              )}
+              {details.depTime && <p className="text-base font-black text-ink mt-1">{details.depTime}</p>}
               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-petal-400" />
                 <p className="text-[10px] text-petal-400 font-bold">出发</p>
               </div>
             </div>
-
-            {/* Centre */}
             <div className="flex flex-col items-center gap-1.5 px-1">
               <p className="text-[10px] text-ink-faint font-semibold">2026 / 05 / 07</p>
               <div className="flex items-center gap-1 w-full">
@@ -88,134 +170,54 @@ function FixedFlightCard() {
               </div>
               <p className="text-[10px] text-ink-faint">约 6h 30m</p>
             </div>
-
-            {/* Arrival */}
             <div className="flex-1 text-right">
               <p className="text-3xl font-black text-ink">ICN</p>
               <p className="text-xs text-ink-muted mt-1 font-semibold">仁川 · 首尔</p>
-              {details.arrTime && (
-                <p className="text-base font-black text-ink mt-1">{details.arrTime}</p>
-              )}
+              {details.arrTime && <p className="text-base font-black text-ink mt-1">{details.arrTime}</p>}
               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-sage-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-sage" />
                 <p className="text-[10px] text-sage-600 font-bold">到达</p>
               </div>
             </div>
           </div>
-
-          {/* Details */}
           <div className="mt-4 pt-4 border-t border-black/5 grid grid-cols-4 gap-2 text-center">
-            <div>
-              <p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">航空</p>
-              <p className="text-xs font-bold text-ink mt-0.5">AirAsia X</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">行李</p>
-              <p className="text-xs font-bold text-ink mt-0.5">🧳 {details.baggage}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">座位</p>
-              <p className="text-xs font-bold text-ink mt-0.5">{details.seat || "—"}</p>
-            </div>
-            <div>
-              <p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">航班</p>
-              <p className="text-xs font-bold text-ink mt-0.5">D7 505</p>
-            </div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航空</p><p className="text-xs font-bold text-ink mt-0.5">AirAsia X</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">行李</p><p className="text-xs font-bold text-ink mt-0.5">🧳 {details.baggage}</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">座位</p><p className="text-xs font-bold text-ink mt-0.5">{details.seat || "—"}</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航班</p><p className="text-xs font-bold text-ink mt-0.5">D7 505</p></div>
           </div>
-
-          {details.notes && (
-            <p className="mt-3 text-xs text-ink-muted bg-black/3 rounded-2xl px-3 py-2">{details.notes}</p>
-          )}
+          {details.notes && <p className="mt-3 text-xs text-ink-muted bg-black/3 rounded-2xl px-3 py-2">{details.notes}</p>}
         </div>
 
-        {/* Footer */}
         <div className="bg-red-50 px-5 py-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs">📱</span>
-            <p className="text-[11px] text-petal-400 font-semibold">提前 3 小时到达 KLIA，网上值机更快</p>
-          </div>
-          <button onClick={openEdit}
+          <p className="text-[11px] text-petal-400 font-semibold">📱 提前 3 小时到达 KLIA</p>
+          <button onClick={openEdit} disabled={isSaving}
             className="shrink-0 ml-2 bg-white text-petal-400 text-[11px] font-bold rounded-2xl px-3 py-1.5 border border-petal-100">
             ✏️ 编辑
           </button>
         </div>
       </div>
 
-      {/* Edit sheet */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.3)" }}
-             onClick={() => setEditing(false)}>
-          <div className="bg-cream rounded-t-4xl p-6 pb-10 animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="w-10 h-1 rounded-full bg-ink-faint mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-ink mb-4">编辑航班信息</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">出发时间</label>
-                  <input className="input" placeholder="例：23:55" value={draft.depTime}
-                    onChange={(e) => setDraft(d => ({ ...d, depTime: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">到达时间</label>
-                  <input className="input" placeholder="例：07:30+1" value={draft.arrTime}
-                    onChange={(e) => setDraft(d => ({ ...d, arrTime: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">行李额度</label>
-                  <input className="input" placeholder="例：25kg" value={draft.baggage}
-                    onChange={(e) => setDraft(d => ({ ...d, baggage: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">座位号</label>
-                  <input className="input" placeholder="例：15A" value={draft.seat}
-                    onChange={(e) => setDraft(d => ({ ...d, seat: e.target.value }))} />
-                </div>
-              </div>
-              <div>
-                <label className="label">备注</label>
-                <input className="input" placeholder="任何附加信息…" value={draft.notes}
-                  onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))} />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button onClick={() => setEditing(false)} className="btn-secondary flex-1">取消</button>
-                <button onClick={saveEdit} className="btn-primary flex-1">保存</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FlightEditSheet title="编辑去程航班" draft={draft} setDraft={setDraft}
+          onSave={saveEdit} onClose={() => setEditing(false)} outbound={true} />
       )}
     </>
   );
 }
 
-/* ── Fixed return flight ICN→KUL May 15 D7505 ── */
-const LS_RETURN_KEY = "seoulmate_return_d7505_details";
-
-function loadReturnDetails(): FlightDetails {
-  if (typeof window === "undefined") return { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
-  try {
-    return JSON.parse(localStorage.getItem(LS_RETURN_KEY) ?? "null") ?? { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
-  } catch { return { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" }; }
-}
-
+/* ── Return ICN → KUL ── */
 function ReturnFlightCard() {
-  const [details, setDetails] = useState<FlightDetails>(loadReturnDetails());
+  const { details, saveDetails, isSaving } = useFlightSlot("return_d7505");
   const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState<FlightDetails>(details);
+  const [draft,   setDraft]   = useState<FlightDetails>(DEFAULT_DETAILS);
 
   function openEdit() { setDraft(details); setEditing(true); }
-  function saveEdit() {
-    setDetails(draft);
-    localStorage.setItem(LS_RETURN_KEY, JSON.stringify(draft));
-    setEditing(false);
-  }
+  async function saveEdit() { await saveDetails(draft); setEditing(false); }
 
   return (
     <>
       <div className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 28px rgba(255,0,96,0.13)" }}>
-        {/* Airline header */}
         <div style={{ background: "linear-gradient(135deg, #FF0060, #FF4D94)" }}
              className="px-5 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -228,15 +230,12 @@ function ReturnFlightCard() {
           </div>
         </div>
 
-        {/* Route */}
         <div className="bg-white px-5 py-5">
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <p className="text-3xl font-black text-ink">ICN</p>
               <p className="text-xs text-ink-muted mt-1 font-semibold">仁川 · 首尔</p>
-              {details.depTime && (
-                <p className="text-base font-black text-ink mt-1">{details.depTime}</p>
-              )}
+              {details.depTime && <p className="text-base font-black text-ink mt-1">{details.depTime}</p>}
               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-petal-400" />
                 <p className="text-[10px] text-petal-400 font-bold">出发</p>
@@ -256,9 +255,7 @@ function ReturnFlightCard() {
             <div className="flex-1 text-right">
               <p className="text-3xl font-black text-ink">KUL</p>
               <p className="text-xs text-ink-muted mt-1 font-semibold">KLIA · 吉隆坡</p>
-              {details.arrTime && (
-                <p className="text-base font-black text-ink mt-1">{details.arrTime}</p>
-              )}
+              {details.arrTime && <p className="text-base font-black text-ink mt-1">{details.arrTime}</p>}
               <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-sage-50 px-2 py-0.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-sage" />
                 <p className="text-[10px] text-sage-600 font-bold">到达</p>
@@ -273,17 +270,13 @@ function ReturnFlightCard() {
             <div className="flex-1 h-px border-t border-dashed border-black/10" />
           </div>
 
-          {/* Details row */}
           <div className="mt-3 pt-3 border-t border-black/5 grid grid-cols-4 gap-2 text-center">
-            <div><p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">航空</p><p className="text-xs font-bold text-ink mt-0.5">AirAsia X</p></div>
-            <div><p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">行李</p><p className="text-xs font-bold text-ink mt-0.5">🧳 {details.baggage}</p></div>
-            <div><p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">座位</p><p className="text-xs font-bold text-ink mt-0.5">{details.seat || "—"}</p></div>
-            <div><p className="text-[9px] text-ink-faint font-semibold uppercase tracking-wide">航班</p><p className="text-xs font-bold text-ink mt-0.5">D7 505</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航空</p><p className="text-xs font-bold text-ink mt-0.5">AirAsia X</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">行李</p><p className="text-xs font-bold text-ink mt-0.5">🧳 {details.baggage}</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">座位</p><p className="text-xs font-bold text-ink mt-0.5">{details.seat || "—"}</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航班</p><p className="text-xs font-bold text-ink mt-0.5">D7 505</p></div>
           </div>
-
-          {details.notes && (
-            <p className="mt-3 text-xs text-ink-muted bg-black/3 rounded-2xl px-3 py-2">{details.notes}</p>
-          )}
+          {details.notes && <p className="mt-3 text-xs text-ink-muted bg-black/3 rounded-2xl px-3 py-2">{details.notes}</p>}
         </div>
 
         {/* Transport guide */}
@@ -292,23 +285,22 @@ function ReturnFlightCard() {
           <div className="space-y-1.5">
             <div className="flex items-start gap-2">
               <span className="text-[10px] font-black text-white bg-sage rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">1</span>
-              <p className="text-[10px] text-sage-800 leading-relaxed">从 <strong>상수역 (上水站)</strong> 乘地铁 6 号线 → 转 <strong>공덕역 (孔德站)</strong> → 换乘 <strong>空港铁路 (AREX)</strong> → 仁川机场</p>
+              <p className="text-[10px] text-sage-800 leading-relaxed">从 <strong>상수역</strong> 乘地铁 6 号线 → 转 <strong>공덕역</strong> → 换乘 <strong>AREX 空港铁路</strong> → 仁川机场 T2</p>
             </div>
             <div className="flex items-start gap-2">
               <span className="text-[10px] font-black text-white bg-ginger-400 rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">2</span>
               <p className="text-[10px] text-sage-800 leading-relaxed">或打 <strong>Kakao T 出租车</strong>，约 60-80 分钟，费用约 ₩60,000-80,000</p>
             </div>
             <div className="flex items-start gap-2">
-              <span className="text-[10px] font-bold text-ink-faint bg-black/10 rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">⚠</span>
+              <span className="text-[10px] font-bold text-ink-faint bg-black/10 rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">!</span>
               <p className="text-[10px] text-ink-muted leading-relaxed">建议出发前 <strong>3 小时</strong>到达机场</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="bg-red-50 px-5 py-2.5 flex items-center justify-between">
           <p className="text-[11px] text-petal-400 font-semibold">🛫 回家咯！May 15</p>
-          <button onClick={openEdit}
+          <button onClick={openEdit} disabled={isSaving}
             className="shrink-0 ml-2 bg-white text-petal-400 text-[11px] font-bold rounded-2xl px-3 py-1.5 border border-petal-100">
             ✏️ 编辑
           </button>
@@ -316,28 +308,8 @@ function ReturnFlightCard() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.3)" }}
-             onClick={() => setEditing(false)}>
-          <div className="bg-cream rounded-t-4xl p-6 pb-10 animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="w-10 h-1 rounded-full bg-ink-faint mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-ink mb-4">编辑回程航班</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">出发时间</label><input className="input" placeholder="例：10:00" value={draft.depTime} onChange={(e) => setDraft(d => ({ ...d, depTime: e.target.value }))} /></div>
-                <div><label className="label">到达时间</label><input className="input" placeholder="例：17:00" value={draft.arrTime} onChange={(e) => setDraft(d => ({ ...d, arrTime: e.target.value }))} /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="label">行李额度</label><input className="input" placeholder="例：20kg" value={draft.baggage} onChange={(e) => setDraft(d => ({ ...d, baggage: e.target.value }))} /></div>
-                <div><label className="label">座位号</label><input className="input" placeholder="例：22F" value={draft.seat} onChange={(e) => setDraft(d => ({ ...d, seat: e.target.value }))} /></div>
-              </div>
-              <div><label className="label">备注</label><input className="input" placeholder="任何附加信息…" value={draft.notes} onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))} /></div>
-              <div className="flex gap-3 pt-1">
-                <button onClick={() => setEditing(false)} className="btn-secondary flex-1">取消</button>
-                <button onClick={saveEdit} className="btn-primary flex-1">保存</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <FlightEditSheet title="编辑回程航班" draft={draft} setDraft={setDraft}
+          onSave={saveEdit} onClose={() => setEditing(false)} outbound={false} />
       )}
     </>
   );
@@ -412,11 +384,11 @@ export default function BookingsPage() {
   const removeBooking = useRemoveBooking();
 
   const [activeTab, setActiveTab] = useState<BookingType>("flight");
-  const [showForm, setShowForm]   = useState(false);
+  const [showForm,  setShowForm]  = useState(false);
   const [form, setForm]           = useState<Partial<Omit<Booking,"id"|"created_at">>>({ type: "flight" });
 
   const tab      = TABS.find((t) => t.key === activeTab)!;
-  const filtered = bookings.filter((b) => b.type === activeTab);
+  const filtered = bookings.filter((b) => b.type === activeTab && !b.id?.includes("__"));
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -426,7 +398,6 @@ export default function BookingsPage() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-cream">
-      {/* Header */}
       <div className="px-5 pt-safe pt-4 pb-2">
         <div className="flex items-center justify-between">
           <div>
@@ -443,7 +414,6 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Tab bar */}
       <div className="px-4 pt-2 pb-4">
         <div className="tab-bar">
           {TABS.map((t) => {
@@ -460,12 +430,10 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 px-4 pb-safe space-y-3">
         {isLoading ? (
           <LoadingPlane text="载入预订信息…" />
         ) : activeTab === "flight" ? (
-          /* Always show fixed flight first, then user-added ones */
           <>
             <FixedFlightCard />
             <ReturnFlightCard />
@@ -486,20 +454,17 @@ export default function BookingsPage() {
         )}
       </div>
 
-      {/* FAB – hide for flights since fixed card is always there; show for hotel/rental/voucher */}
       {activeTab !== "flight" && (
         <button onClick={() => { setForm({ type: activeTab }); setShowForm(true); }}
-          className="fixed bottom-24 right-5 h-14 w-14 rounded-full bg-ginger flex items-center justify-center z-30 text-white"
+          className="fixed bottom-32 right-5 h-14 w-14 rounded-full bg-ginger flex items-center justify-center z-30 text-white"
           style={{ boxShadow: "0 6px 24px rgba(232,168,0,0.35)" }}>
           <Plus className="h-6 w-6" />
         </button>
       )}
 
-      {/* Add sheet */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end"
-             style={{ background: "rgba(0,0,0,0.3)" }}
-             onClick={() => setShowForm(false)}>
+             style={{ background: "rgba(0,0,0,0.3)" }} onClick={() => setShowForm(false)}>
           <div className="bg-cream rounded-t-4xl p-6 pb-10 max-h-[85vh] overflow-y-auto animate-slide-up"
                onClick={(e) => e.stopPropagation()}>
             <div className="w-10 h-1 rounded-full bg-ink-faint mx-auto mb-5" />
@@ -512,29 +477,21 @@ export default function BookingsPage() {
               </div>
               {activeTab === "hotel" && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="label">入住日期</label>
+                  <div><label className="label">入住日期</label>
                     <input className="input" type="date" value={form.check_in ?? ""}
-                      onChange={(e) => setForm(f => ({ ...f, check_in: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="label">退房日期</label>
+                      onChange={(e) => setForm(f => ({ ...f, check_in: e.target.value }))} /></div>
+                  <div><label className="label">退房日期</label>
                     <input className="input" type="date" value={form.check_out ?? ""}
-                      onChange={(e) => setForm(f => ({ ...f, check_out: e.target.value }))} />
-                  </div>
+                      onChange={(e) => setForm(f => ({ ...f, check_out: e.target.value }))} /></div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">价格</label>
+                <div><label className="label">价格</label>
                   <input className="input" placeholder="0" type="number" value={form.price ?? ""}
-                    onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} />
-                </div>
-                <div>
-                  <label className="label">币种</label>
+                    onChange={(e) => setForm(f => ({ ...f, price: e.target.value }))} /></div>
+                <div><label className="label">币种</label>
                   <input className="input" placeholder="MYR" value={form.currency ?? ""}
-                    onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))} />
-                </div>
+                    onChange={(e) => setForm(f => ({ ...f, currency: e.target.value }))} /></div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1">取消</button>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, MapPin, Camera, Heart, ChevronRight, Navigation } from "lucide-react";
+import { Plus, MapPin, Camera, Heart, ChevronRight, Navigation, Cloud, CloudOff } from "lucide-react";
+import { hasSupabase } from "@/lib/supabase/client";
 import { tap } from "@/lib/utils/haptics";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSupabaseSchedule";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
@@ -337,9 +338,23 @@ export default function HomePage() {
       <div className="px-5 pt-safe pt-6 pb-5">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-xs text-ink-faint font-medium">
-              {format(new Date(), "M月d日 EEEE", { locale: zhCN })}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-ink-faint font-medium">
+                {format(new Date(), "M月d日 EEEE", { locale: zhCN })}
+              </p>
+              {/* Supabase connection indicator */}
+              {hasSupabase() ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-sage/15 px-2 py-0.5">
+                  <Cloud className="h-2.5 w-2.5 text-sage" />
+                  <span className="text-[9px] font-bold text-sage">已同步</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-petal-100 px-2 py-0.5">
+                  <CloudOff className="h-2.5 w-2.5 text-petal-400" />
+                  <span className="text-[9px] font-bold text-petal-400">未连接</span>
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl font-black text-ink tracking-tight mt-0.5">
               {greeting}，{userName} 👋
             </h1>
