@@ -64,7 +64,7 @@ export default function ExpensesPage() {
   const { data: expenses = [], isLoading } = useExpenses(TRIP_ID);
   const { data: members = [] }             = useMembers();
   const addExpense = useAddExpense(TRIP_ID);
-  const { data: settled = new Set() } = useSettledDebts();
+  const { data: settled = new Set<string>() } = useSettledDebts();
   const toggleSettleMutation = useToggleSettledDebt();
   const { rate: myrRate, loading: rateLoading, refresh: refreshRate } = useMyrRate();
 

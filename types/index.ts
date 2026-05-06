@@ -56,6 +56,7 @@ export interface Schedule {
   address: string | null;
   lat: number | null;
   lng: number | null;
+  photo_url: string | null;
   naver_place_id: string | null;
   kakao_place_id: string | null;
   created_by: string;

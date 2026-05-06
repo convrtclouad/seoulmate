@@ -26,9 +26,11 @@ interface FlightDetails {
   notes:   string;
 }
 const DEFAULT_DETAILS: FlightDetails = { depTime: "", arrTime: "", baggage: "20kg", seat: "", notes: "" };
+const OUTBOUND_DEFAULTS: FlightDetails = { depTime: "23:30", arrTime: "07:00 (+1)", baggage: "20kg", seat: "", notes: "KLIA2 · AirAsia X" };
+const RETURN_DEFAULTS:   FlightDetails = { depTime: "08:15", arrTime: "13:45",      baggage: "20kg", seat: "", notes: "PNR: KK3YTR · ICN T2" };
 
 /* ── Supabase-backed flight slot hook ── */
-function useFlightSlot(slotId: string) {
+function useFlightSlot(slotId: string, slotDefault: FlightDetails = DEFAULT_DETAILS) {
   const qc   = useQueryClient();
   const sb   = getSupabaseClient();
   const dbId = `${TRIP_ID}__${slotId}`;
@@ -38,11 +40,11 @@ function useFlightSlot(slotId: string) {
     queryKey: qKey,
     queryFn: async () => {
       if (!hasSupabase()) {
-        try { return JSON.parse(localStorage.getItem(`seoulmate_${slotId}`) ?? "null") ?? DEFAULT_DETAILS; }
-        catch { return DEFAULT_DETAILS; }
+        try { return JSON.parse(localStorage.getItem(`seoulmate_${slotId}`) ?? "null") ?? slotDefault; }
+        catch { return slotDefault; }
       }
       const { data } = await sb.from("bookings").select("data").eq("id", dbId).maybeSingle();
-      return (data?.data as FlightDetails) ?? DEFAULT_DETAILS;
+      return (data?.data as FlightDetails) ?? slotDefault;
     },
     staleTime: Infinity,
   });
@@ -55,7 +57,7 @@ function useFlightSlot(slotId: string) {
       }
       const { error } = await sb.from("bookings").upsert({
         id: dbId, trip_id: TRIP_ID, type: "flight",
-        title: slotId === "outbound_d7505" ? "KUL→ICN D7 505" : "ICN→KUL D7 505",
+        title: slotId === "outbound_airasia" ? "KUL→ICN AirAsia X" : "ICN→KUL D7 505",
         data: details,
       }, { onConflict: "id" });
       if (error) throw error;
@@ -76,7 +78,7 @@ function useFlightSlot(slotId: string) {
     return () => { sb.removeChannel(ch); };
   }, [sb, dbId, refresh]);
 
-  return { details: query.data ?? DEFAULT_DETAILS, saveDetails: save.mutateAsync, isSaving: save.isPending };
+  return { details: query.data ?? slotDefault, saveDetails: save.mutateAsync, isSaving: save.isPending };
 }
 
 /* ── Shared flight edit sheet ── */
@@ -126,7 +128,7 @@ function FlightEditSheet({ title, draft, setDraft, onSave, onClose, outbound }: 
 
 /* ── Outbound KUL → ICN ── */
 function FixedFlightCard() {
-  const { details, saveDetails, isSaving } = useFlightSlot("outbound_d7505");
+  const { details, saveDetails, isSaving } = useFlightSlot("outbound_airasia", OUTBOUND_DEFAULTS);
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState<FlightDetails>(DEFAULT_DETAILS);
 
@@ -143,8 +145,8 @@ function FixedFlightCard() {
             <span className="text-white/60 text-xs font-semibold">X</span>
           </div>
           <div className="text-right">
-            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Outbound</p>
-            <p className="text-white font-black text-base tracking-widest">D7 505</p>
+            <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider">Outbound · 去程</p>
+            <p className="text-white font-black text-base tracking-widest">AirAsia X</p>
           </div>
         </div>
 
@@ -184,7 +186,7 @@ function FixedFlightCard() {
             <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航空</p><p className="text-xs font-bold text-ink mt-0.5">AirAsia X</p></div>
             <div><p className="text-[9px] text-ink-faint font-semibold uppercase">行李</p><p className="text-xs font-bold text-ink mt-0.5">🧳 {details.baggage}</p></div>
             <div><p className="text-[9px] text-ink-faint font-semibold uppercase">座位</p><p className="text-xs font-bold text-ink mt-0.5">{details.seat || "—"}</p></div>
-            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">航班</p><p className="text-xs font-bold text-ink mt-0.5">D7 505</p></div>
+            <div><p className="text-[9px] text-ink-faint font-semibold uppercase">日期</p><p className="text-xs font-bold text-ink mt-0.5">May 7</p></div>
           </div>
           {details.notes && <p className="mt-3 text-xs text-ink-muted bg-black/3 rounded-2xl px-3 py-2">{details.notes}</p>}
         </div>
@@ -208,7 +210,7 @@ function FixedFlightCard() {
 
 /* ── Return ICN → KUL ── */
 function ReturnFlightCard() {
-  const { details, saveDetails, isSaving } = useFlightSlot("return_d7505");
+  const { details, saveDetails, isSaving } = useFlightSlot("return_d7505", RETURN_DEFAULTS);
   const [editing, setEditing] = useState(false);
   const [draft,   setDraft]   = useState<FlightDetails>(DEFAULT_DETAILS);
 
@@ -356,6 +358,135 @@ function UserFlightCard({ b, onDelete }: { b: Booking; onDelete: () => void }) {
   );
 }
 
+/* ── Fixed Hotel Cards ── */
+const FIXED_HOTELS = [
+  {
+    id:          "seoul-airbnb",
+    emoji:       "🏠",
+    name:        "首尔 Airbnb",
+    area:        "홍대 Hongdae · 마포구",
+    checkIn:     "2026-05-08",
+    checkOut:    "2026-05-11",
+    nights:      3,
+    code:        "HMXKZYT2HC",
+    link:        "https://www.airbnb.co.uk/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HMXKZYT2HC",
+    naverSearch: "홍대 마포구",
+    gradFrom:    "#FF385C",
+    gradTo:      "#FF7A8A",
+    badge:       "首尔 3晚",
+  },
+  {
+    id:          "busan-airbnb",
+    emoji:       "🌊",
+    name:        "釜山 Airbnb",
+    area:        "부산 Busan",
+    checkIn:     "2026-05-11",
+    checkOut:    "2026-05-13",
+    nights:      2,
+    code:        null,
+    link:        "https://www.airbnb.com/l/sBifFSts",
+    naverSearch: "해운대 부산",
+    gradFrom:    "#0066FF",
+    gradTo:      "#00C2FF",
+    badge:       "釜山 2晚",
+  },
+  {
+    id:          "incheon-hotel",
+    emoji:       "✈️",
+    name:        "仁川机场酒店",
+    area:        "Incheon · ICN 附近",
+    checkIn:     "2026-05-13",
+    checkOut:    "2026-05-14",
+    nights:      1,
+    code:        "Trip.com #70141808",
+    link:        "https://my.trip.com/hotels/detail/?cityEnName=Incheon&cityId=410&hotelId=70141808&checkIn=2026-05-13&checkOut=2026-05-14&adult=4",
+    naverSearch: "인천국제공항 근처 호텔",
+    gradFrom:    "#6C3FC5",
+    gradTo:      "#9B6DFF",
+    badge:       "机场 1晚",
+  },
+];
+
+function HotelDateBadge({ dateStr, gradFrom }: { dateStr: string; gradFrom: string }) {
+  const d = new Date(dateStr);
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return (
+    <div className="flex flex-col items-center rounded-2xl px-2.5 py-1.5 min-w-[44px]"
+         style={{ background: `${gradFrom}18` }}>
+      <span className="text-[8px] font-black tracking-widest" style={{ color: gradFrom }}>{months[d.getMonth()]}</span>
+      <span className="text-xl font-black leading-none" style={{ color: gradFrom }}>{d.getDate()}</span>
+    </div>
+  );
+}
+
+function FixedHotelCards() {
+  return (
+    <>
+      {FIXED_HOTELS.map((h) => (
+        <div key={h.id} className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 28px rgba(0,0,0,0.12)" }}>
+          {/* Header */}
+          <div style={{ background: `linear-gradient(135deg, ${h.gradFrom}, ${h.gradTo})` }}
+               className="px-5 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-white font-black text-base">{h.emoji} {h.name}</p>
+              <p className="text-white/70 text-[11px] font-semibold mt-0.5">{h.area}</p>
+            </div>
+            <div className="rounded-2xl bg-white/20 px-2.5 py-1">
+              <p className="text-white text-[10px] font-black">{h.badge}</p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="bg-white px-5 py-4">
+            {/* Date range */}
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center">
+                <HotelDateBadge dateStr={h.checkIn} gradFrom={h.gradFrom} />
+                <span className="text-[9px] text-ink-muted font-semibold mt-1">入住</span>
+              </div>
+              <div className="flex-1 flex flex-col items-center">
+                <div className="flex items-center gap-1 w-full">
+                  <div className="flex-1 h-px bg-black/10" />
+                  <Hotel className="h-4 w-4 text-ink-faint" />
+                  <div className="flex-1 h-px bg-black/10" />
+                </div>
+                <span className="text-[10px] text-ink-faint font-semibold mt-1">{h.nights} 晚</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <HotelDateBadge dateStr={h.checkOut} gradFrom={h.gradFrom} />
+                <span className="text-[9px] text-ink-muted font-semibold mt-1">退房</span>
+              </div>
+            </div>
+
+            {/* Reservation code */}
+            {h.code && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-ink-faint font-semibold">预订码</span>
+                <span className="text-[11px] font-black text-ink tracking-widest">{h.code}</span>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2 mt-4">
+              <a href={h.link} target="_blank" rel="noreferrer"
+                 className="flex-1 text-center rounded-2xl py-2.5 text-xs font-bold text-white"
+                 style={{ background: `linear-gradient(135deg, ${h.gradFrom}, ${h.gradTo})` }}>
+                🔗 查看预订
+              </a>
+              <a href={`https://map.naver.com/v5/search/${encodeURIComponent(h.naverSearch)}`}
+                 target="_blank" rel="noreferrer"
+                 className="flex-1 text-center rounded-2xl py-2.5 text-xs font-bold text-white"
+                 style={{ background: "#03C75A" }}>
+                📍 Naver 地图
+              </a>
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function GenericCard({ b, tab, onDelete }: { b: Booking; tab: typeof TABS[0]; onDelete: () => void }) {
   const Icon = tab.icon;
   return (
@@ -439,6 +570,13 @@ export default function BookingsPage() {
             <ReturnFlightCard />
             {filtered.map((b) => (
               <UserFlightCard key={b.id} b={b} onDelete={() => removeBooking.mutate(b.id)} />
+            ))}
+          </>
+        ) : activeTab === "hotel" ? (
+          <>
+            <FixedHotelCards />
+            {filtered.map((b) => (
+              <GenericCard key={b.id} b={b} tab={tab} onDelete={() => removeBooking.mutate(b.id)} />
             ))}
           </>
         ) : filtered.length === 0 ? (

@@ -54,6 +54,7 @@ export function useAddActivity(tripId: string) {
         address: form.address ?? null,
         lat: form.lat ?? null,
         lng: form.lng ?? null,
+        photo_url: null,
         naver_place_id: null,
         kakao_place_id: null,
         created_by: localStorage.getItem("seoulmate_user") ?? "unknown",

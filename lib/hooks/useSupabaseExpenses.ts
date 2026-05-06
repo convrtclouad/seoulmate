@@ -129,7 +129,7 @@ export function useSettledDebts() {
   const query = useQuery({
     queryKey: SETTLED_KEY,
     queryFn: async () => {
-      if (!hasSupabase()) { try { return new Set(JSON.parse(localStorage.getItem("seoulmate_settled_debts") ?? "[]")); } catch { return new Set<string>(); } }
+      if (!hasSupabase()) { try { return new Set<string>(JSON.parse(localStorage.getItem("seoulmate_settled_debts") ?? "[]") as string[]); } catch { return new Set<string>(); } }
       const { data, error } = await sb
         .from("settled_debts")
         .select("debtor_id, creditor_id")

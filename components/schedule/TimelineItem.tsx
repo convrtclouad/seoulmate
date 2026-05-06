@@ -2,23 +2,22 @@
 
 import { format, parseISO } from "date-fns";
 import {
-  MapPin, Navigation, Clock, Trash2,
-  Utensils, Car, Hotel, Camera, ShoppingBag, HelpCircle,
+  MapPin, Clock, Trash2,
+  Utensils, Car, Hotel, Camera, ShoppingBag, HelpCircle, Navigation,
 } from "lucide-react";
-import { openNaverMap } from "@/lib/utils/maps";
 import type { Schedule, ActivityCategory } from "@/types";
 import { cn } from "@/lib/utils/cn";
 
 const CATEGORY_CONFIG: Record<
   ActivityCategory,
-  { icon: React.ElementType; color: string; bg: string; label: string }
+  { icon: React.ElementType; color: string; bg: string; label: string; labelCn: string }
 > = {
-  transport:     { icon: Car,       color: "text-blue-500",   bg: "bg-blue-100",   label: "Transport" },
-  food:          { icon: Utensils,  color: "text-orange-500", bg: "bg-orange-100", label: "Food & Drink" },
-  attraction:    { icon: Camera,    color: "text-purple-500", bg: "bg-purple-100", label: "Attraction" },
-  accommodation: { icon: Hotel,     color: "text-indigo-500", bg: "bg-indigo-100", label: "Stay" },
-  shopping:      { icon: ShoppingBag, color: "text-pink-500", bg: "bg-pink-100",   label: "Shopping" },
-  other:         { icon: HelpCircle, color: "text-gray-400",  bg: "bg-gray-100",   label: "Other" },
+  transport:     { icon: Car,         color: "text-blue-500",   bg: "bg-blue-100",   label: "Transport",   labelCn: "交通" },
+  food:          { icon: Utensils,    color: "text-orange-500", bg: "bg-orange-100", label: "Food",        labelCn: "餐饮" },
+  attraction:    { icon: Camera,      color: "text-purple-500", bg: "bg-purple-100", label: "Attraction",  labelCn: "景点" },
+  accommodation: { icon: Hotel,       color: "text-indigo-500", bg: "bg-indigo-100", label: "Stay",        labelCn: "住宿" },
+  shopping:      { icon: ShoppingBag, color: "text-pink-500",   bg: "bg-pink-100",   label: "Shopping",    labelCn: "购物" },
+  other:         { icon: HelpCircle,  color: "text-gray-400",   bg: "bg-gray-100",   label: "Other",       labelCn: "其他" },
 };
 
 interface TimelineItemProps {
@@ -27,21 +26,20 @@ interface TimelineItemProps {
   onDelete?: (id: string) => void;
 }
 
-export function TimelineItem({ activity, isLast = false, onDelete }: TimelineItemProps) {
-  const config = CATEGORY_CONFIG[activity.category];
-  const Icon   = config.icon;
-
-  const hasLocation = activity.lat !== null && activity.lng !== null;
-
-  function handleGetThere() {
-    if (!hasLocation) return;
-    openNaverMap({
-      lat:          activity.lat!,
-      lng:          activity.lng!,
-      name:         activity.place_name ?? activity.title,
-      naverPlaceId: activity.naver_place_id ?? undefined,
-    });
+function openNaverSearch(placeName: string, lat?: number | null, lng?: number | null) {
+  if (lat && lng) {
+    // If we have coords, open map at that location
+    const url = `https://map.naver.com/v5/search/${encodeURIComponent(placeName)}?c=${lng},${lat},15,0,0,0,dh`;
+    window.open(url, "_blank");
+  } else {
+    const url = `https://map.naver.com/v5/search/${encodeURIComponent(placeName)}`;
+    window.open(url, "_blank");
   }
+}
+
+export function TimelineItem({ activity, isLast = false, onDelete }: TimelineItemProps) {
+  const config = CATEGORY_CONFIG[activity.category] ?? CATEGORY_CONFIG.other;
+  const Icon   = config.icon;
 
   return (
     <div className="flex gap-3 group animate-slide-up">
@@ -60,76 +58,96 @@ export function TimelineItem({ activity, isLast = false, onDelete }: TimelineIte
 
       {/* Card */}
       <div className="flex-1 pb-4">
-        <div className="card">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-gray-900 text-sm leading-tight">
-                {activity.title}
-              </h3>
-              <span className={cn(
-                "badge mt-1",
-                config.bg,
-                config.color
-              )}>
-                {config.label}
-              </span>
-            </div>
-
-            {/* Time */}
-            {activity.start_time && (
-              <div className="flex items-center gap-1 shrink-0 text-xs text-gray-400 font-medium">
-                <Clock className="h-3 w-3" />
-                {format(parseISO(`2000-01-01T${activity.start_time}`), "h:mm a")}
-                {activity.end_time && (
-                  <>
-                    {" – "}
-                    {format(parseISO(`2000-01-01T${activity.end_time}`), "h:mm a")}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Description */}
-          {activity.description && (
-            <p className="mt-2 text-xs text-gray-500 leading-relaxed">
-              {activity.description}
-            </p>
-          )}
-
-          {/* Location row */}
-          {activity.place_name && (
-            <div className="flex items-center gap-1.5 mt-2.5">
-              <MapPin className="h-3.5 w-3.5 text-primary-400 shrink-0" />
-              <p className="text-xs text-gray-500 truncate">{activity.place_name}</p>
-              {activity.address && (
-                <span className="text-xs text-gray-300 truncate">· {activity.address}</span>
+        <div className="card overflow-hidden !p-0">
+          {/* Photo banner */}
+          {activity.photo_url && (
+            <div className="relative h-28 w-full overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={activity.photo_url}
+                alt={activity.title}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+              {/* Time badge over photo */}
+              {activity.start_time && (
+                <div className="absolute bottom-2 left-3 flex items-center gap-1 rounded-full bg-black/50 backdrop-blur-sm px-2 py-0.5">
+                  <Clock className="h-3 w-3 text-white/80" />
+                  <span className="text-[10px] text-white font-bold">
+                    {format(parseISO(`2000-01-01T${activity.start_time}`), "h:mm a")}
+                    {activity.end_time && ` – ${format(parseISO(`2000-01-01T${activity.end_time}`), "h:mm a")}`}
+                  </span>
+                </div>
               )}
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 mt-3">
-            {hasLocation && (
-              <button
-                onClick={handleGetThere}
-                className="flex items-center gap-1.5 rounded-xl bg-primary-50 border border-primary-100 px-3 py-1.5 text-xs font-semibold text-primary-600 hover:bg-primary-100 transition-colors tap-target"
-              >
-                <Navigation className="h-3.5 w-3.5" />
-                Get there
-              </button>
+          <div className="p-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-900 text-sm leading-tight">
+                  {activity.title}
+                </h3>
+                <span className={cn("badge mt-1 text-[10px]", config.bg, config.color)}>
+                  {config.labelCn}
+                </span>
+              </div>
+
+              {/* Time (only if no photo — shown over photo otherwise) */}
+              {!activity.photo_url && activity.start_time && (
+                <div className="flex items-center gap-1 shrink-0 text-xs text-gray-400 font-medium">
+                  <Clock className="h-3 w-3" />
+                  {format(parseISO(`2000-01-01T${activity.start_time}`), "h:mm a")}
+                  {activity.end_time && (
+                    <>
+                      {" – "}
+                      {format(parseISO(`2000-01-01T${activity.end_time}`), "h:mm a")}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            {activity.description && (
+              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                {activity.description}
+              </p>
             )}
 
-            {onDelete && (
-              <button
-                onClick={() => onDelete(activity.id)}
-                className="ml-auto rounded-xl p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 tap-target"
-                aria-label="Delete activity"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+            {/* Location row */}
+            {activity.place_name && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <MapPin className="h-3.5 w-3.5 text-primary-400 shrink-0" />
+                <p className="text-xs text-gray-500 truncate">{activity.place_name}</p>
+              </div>
             )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 mt-3">
+              {activity.place_name && (
+                <button
+                  onClick={() => openNaverSearch(activity.place_name!, activity.lat, activity.lng)}
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors"
+                  style={{ background: "#03C75A", color: "#fff" }}
+                >
+                  <Navigation className="h-3.5 w-3.5" />
+                  Naver 导航
+                </button>
+              )}
+
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(activity.id)}
+                  className="ml-auto rounded-xl p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 tap-target"
+                  aria-label="Delete activity"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

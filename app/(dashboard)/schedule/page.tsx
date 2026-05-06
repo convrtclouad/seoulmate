@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Timeline } from "@/components/schedule/Timeline";
 import { ActivityForm } from "@/components/schedule/ActivityForm";
-import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSchedule";
+import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSupabaseSchedule";
 
 const TRIP_ID = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 
