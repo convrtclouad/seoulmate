@@ -2,11 +2,11 @@
 
 import { useState, useRef } from "react";
 import { Plus, X, Check, ImagePlus, ExternalLink, MapPin } from "lucide-react";
-import { usePrepare, useAddPrepareItem, useTogglePrepareItem, useRemovePrepareItem } from "@/lib/hooks/usePrepare";
-import type { PrepareCategory } from "@/lib/hooks/usePrepare";
-import { useWishlist, useAddWishlistItem, useToggleVisited, useRemoveWishlistItem } from "@/lib/hooks/useWishlist";
-import type { WishlistCategory } from "@/lib/hooks/useWishlist";
-import { useMembers } from "@/lib/hooks/useMembers";
+import { usePrepare, useAddPrepareItem, useTogglePrepareItem, useRemovePrepareItem } from "@/lib/hooks/useSupabasePrepare";
+import type { PrepareCategory } from "@/lib/hooks/useSupabasePrepare";
+import { useWishlist, useAddWishlistItem, useToggleVisited, useRemoveWishlistItem } from "@/lib/hooks/useSupabaseWishlist";
+import type { WishlistCategory } from "@/lib/hooks/useSupabaseWishlist";
+import { useMembers } from "@/lib/hooks/useSupabaseMembers";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { tap, warn, success } from "@/lib/utils/haptics";
 
@@ -64,7 +64,7 @@ function WishlistTab() {
     setSaving(true);
     try {
       await addItem.mutateAsync({ name: fName.trim(), category: fCat, location: fLocation,
-        url: fUrl.trim() || undefined, notes: fNotes.trim() || undefined, photo: fPhoto ?? undefined });
+        url: fUrl.trim() || null, notes: fNotes.trim() || null, photo: fPhoto ?? null });
       success();
       resetForm(); setShowForm(false);
     } finally { setSaving(false); }
@@ -126,7 +126,7 @@ function WishlistTab() {
               <div className="p-4">
                 <div className="flex items-start gap-3">
                   {/* Visit toggle */}
-                  <button onClick={() => { item.visited ? tap() : success(); toggleItem.mutate(item.id); }}
+                  <button onClick={() => { item.visited ? tap() : success(); toggleItem.mutate({ id: item.id, visited: item.visited }); }}
                     className={`mt-0.5 h-7 w-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                       item.visited ? "bg-petal-100 border-transparent" : "border-ink-faint"
                     }`}>
@@ -433,7 +433,7 @@ export default function PreparePage() {
                     <div key={item.id}
                          className={`rounded-3xl bg-surface p-4 flex items-start gap-3 transition-all ${item.done ? "opacity-60" : ""}`}
                          style={{ boxShadow: "var(--shadow-card)" }}>
-                      <button onClick={() => { tap(); toggleItem.mutate(item.id); }}
+                      <button onClick={() => { tap(); toggleItem.mutate({ id: item.id, done: item.done }); }}
                         className={`mt-0.5 h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                           item.done ? `${tab.bg} border-transparent` : "border-ink-faint"
                         }`}>

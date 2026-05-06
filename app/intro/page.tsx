@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Plus, X, ChevronRight, Trash2 } from "lucide-react";
 import { tap, warn, success } from "@/lib/utils/haptics";
-import { getMembersSync, EMOJI_OPTIONS, COLOR_OPTIONS } from "@/lib/hooks/useMembers";
-import type { Member } from "@/lib/hooks/useMembers";
+import { getMembersSync, EMOJI_OPTIONS, COLOR_OPTIONS } from "@/lib/hooks/useSupabaseMembers";
+import type { Member } from "@/lib/hooks/useSupabaseMembers";
 
 const LS_MEMBERS = "seoulmate_members";
 

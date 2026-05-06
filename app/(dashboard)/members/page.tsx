@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, X, Trash2, Check, UserPlus } from "lucide-react";
-import { useMembers, useAddMember, useRemoveMember, EMOJI_OPTIONS, COLOR_OPTIONS } from "@/lib/hooks/useMembers";
-import type { Member } from "@/lib/hooks/useMembers";
+import { useMembers, useAddMember, useRemoveMember, EMOJI_OPTIONS, COLOR_OPTIONS } from "@/lib/hooks/useSupabaseMembers";
+import type { Member } from "@/lib/hooks/useSupabaseMembers";
 import { tap, warn, success } from "@/lib/utils/haptics";
 
 export default function MembersPage() {

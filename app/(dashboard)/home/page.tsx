@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, MapPin, Camera, Heart, ChevronRight } from "lucide-react";
 import { tap } from "@/lib/utils/haptics";
-import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSchedule";
+import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSupabaseSchedule";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ActivityForm } from "@/components/schedule/ActivityForm";

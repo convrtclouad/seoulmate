@@ -1,0 +1,116 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useCallback } from "react";
+import { getSupabaseClient } from "@/lib/supabase/client";
+
+const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
+const QUERY_KEY = ["prepare_items", TRIP_ID];
+
+export type PrepareCategory = "todo" | "packing" | "wishlist" | "shopping";
+
+export interface PrepareItem {
+  id:         string;
+  trip_id:    string;
+  category:   PrepareCategory;
+  text:       string;
+  done:       boolean;
+  assignees:  string[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function genId() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+
+export function usePrepare() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+
+  const query = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: async () => {
+      const { data, error } = await sb
+        .from("prepare_items")
+        .select("*")
+        .eq("trip_id", TRIP_ID)
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as PrepareItem[];
+    },
+    staleTime: 0,
+  });
+
+  const refresh = useCallback(() => {
+    qc.invalidateQueries({ queryKey: QUERY_KEY });
+  }, [qc]);
+
+  useEffect(() => {
+    const ch = sb
+      .channel(`prepare_${TRIP_ID}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "prepare_items",
+        filter: `trip_id=eq.${TRIP_ID}`,
+      }, refresh)
+      .subscribe();
+    return () => { sb.removeChannel(ch); };
+  }, [sb, refresh]);
+
+  return query;
+}
+
+export function useAddPrepareItem() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async (item: {
+      category: PrepareCategory;
+      text: string;
+      assignees?: string[];
+    }) => {
+      const memberId = typeof window !== "undefined"
+        ? (localStorage.getItem("seoulmate_user") ?? null)
+        : null;
+      const row = {
+        id:         genId(),
+        trip_id:    TRIP_ID,
+        category:   item.category,
+        text:       item.text,
+        done:       false,
+        assignees:  item.assignees ?? [],
+        created_by: memberId,
+      };
+      const { data, error } = await sb.from("prepare_items").insert(row).select().single();
+      if (error) throw error;
+      return data as PrepareItem;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}
+
+export function useTogglePrepareItem() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      const { error } = await sb
+        .from("prepare_items")
+        .update({ done: !done, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}
+
+export function useRemovePrepareItem() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await sb.from("prepare_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}

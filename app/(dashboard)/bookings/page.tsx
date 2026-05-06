@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Plus, Plane, Hotel, Car, Ticket, X } from "lucide-react";
-import { useBookings, useAddBooking, useRemoveBooking } from "@/lib/hooks/useBookings";
-import type { BookingType, Booking } from "@/lib/hooks/useBookings";
-import { useMembers } from "@/lib/hooks/useMembers";
+import { useBookings, useAddBooking, useRemoveBooking } from "@/lib/hooks/useSupabaseBookings";
+import type { BookingType, Booking } from "@/lib/hooks/useSupabaseBookings";
+import { useMembers } from "@/lib/hooks/useSupabaseMembers";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 
 const TABS: { key: BookingType; label: string; icon: React.ElementType; color: string; bg: string }[] = [

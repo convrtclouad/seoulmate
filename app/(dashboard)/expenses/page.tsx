@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, List, BarChart3, RefreshCw } from "lucide-react";
-import { useExpenses, useAddExpense } from "@/lib/hooks/useExpenses";
-import { useMembers } from "@/lib/hooks/useMembers";
+import { useExpenses, useAddExpense, useSettledDebts, useToggleSettledDebt } from "@/lib/hooks/useSupabaseExpenses";
+import { useMembers } from "@/lib/hooks/useSupabaseMembers";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
@@ -21,16 +21,6 @@ const CAT_BG: Record<string, string> = {
 
 // Hex colours for selected member pills — avoids missing Tailwind scale issues
 const MEMBER_HEX = ["#5B8862", "#4A9592", "#8B7AB8", "#E8A800", "#E87060"];
-
-// Settled-debts helpers (localStorage-backed)
-const SETTLED_KEY = "seoulmate_settled_debts";
-function loadSettled(): Set<string> {
-  try { return new Set(JSON.parse(localStorage.getItem(SETTLED_KEY) ?? "[]")); }
-  catch { return new Set(); }
-}
-function saveSettled(s: Set<string>) {
-  localStorage.setItem(SETTLED_KEY, JSON.stringify([...s]));
-}
 
 type Tab = "list" | "debts";
 
@@ -70,26 +60,17 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false);
   const [filterMember, setFilterMember] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState("");
-  const [settled, setSettled]   = useState<Set<string>>(new Set());
-
-  useEffect(() => { setSettled(loadSettled()); }, []);
 
   const { data: expenses = [], isLoading } = useExpenses(TRIP_ID);
   const { data: members = [] }             = useMembers();
   const addExpense = useAddExpense(TRIP_ID);
+  const { data: settled = new Set() } = useSettledDebts();
+  const toggleSettleMutation = useToggleSettledDebt();
   const { rate: myrRate, loading: rateLoading, refresh: refreshRate } = useMyrRate();
 
   useEffect(() => {
     setCurrentId(localStorage.getItem("seoulmate_user") ?? members[0]?.id ?? "");
   }, [members]);
-
-  function toggleSettle(debtorId: string, creditorId: string) {
-    const key = `${debtorId}→${creditorId}`;
-    const next = new Set(settled);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    setSettled(next);
-    saveSettled(next);
-  }
 
   const filtered = filterMember
     ? expenses.filter((e) => e.paid_by === filterMember || e.splits?.some((s) => s.user_id === filterMember))
@@ -271,7 +252,7 @@ export default function ExpensesPage() {
           )
         ) : (
           <DebtMatrix expenses={expenses} profiles={mockProfiles} currentUserId={currentId}
-            settled={settled} onToggleSettle={toggleSettle} />
+            settled={settled} onToggleSettle={(debtorId, creditorId) => toggleSettleMutation.mutate({ debtorId, creditorId, currentlySettled: settled.has(`${debtorId}→${creditorId}`) })} />
         )}
       </div>
 
