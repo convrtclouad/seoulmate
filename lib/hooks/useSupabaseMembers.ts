@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 const QUERY_KEY = ["sb_members", TRIP_ID];
@@ -54,6 +54,7 @@ export function useMembers() {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) return lsLoad();
       const { data, error } = await sb
         .from("members")
         .select("*")
@@ -96,6 +97,7 @@ export function useAddMember() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (m: Omit<Member, "id">) => {
+      if (!hasSupabase()) { const id = m.name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(); const member = { id, ...m }; const all = lsLoad(); all.push(member); localStorage.setItem("seoulmate_members", JSON.stringify(all)); return member; }
       const id = m.name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now();
       const member = { id, ...m, trip_id: TRIP_ID };
       const { error } = await sb.from("members").insert(member);
@@ -111,6 +113,7 @@ export function useRemoveMember() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = lsLoad().filter((x) => x.id !== id); localStorage.setItem("seoulmate_members", JSON.stringify(all)); return; }
       const { error } = await sb.from("members").delete().eq("id", id).eq("trip_id", TRIP_ID);
       if (error) throw error;
     },

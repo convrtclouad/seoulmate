@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 import type { BookingType, Booking } from "@/lib/hooks/useBookings";
 
 export type { BookingType, Booking };
@@ -35,6 +35,7 @@ export function useBookings() {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { return JSON.parse(localStorage.getItem("seoulmate_bookings") ?? "[]") as Booking[]; } catch { return []; } }
       const { data, error } = await sb
         .from("bookings")
         .select("*")
@@ -69,6 +70,7 @@ export function useAddBooking() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (b: Omit<Booking, "id" | "created_at">) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_bookings") ?? "[]"); const item = { ...b, id: genId(), created_at: new Date().toISOString() } as Booking; all.unshift(item); localStorage.setItem("seoulmate_bookings", JSON.stringify(all)); return item; }
       const id  = genId();
       const row = bookingToRow(b, id);
       const { error } = await sb.from("bookings").insert(row);
@@ -84,6 +86,7 @@ export function useRemoveBooking() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_bookings") ?? "[]").filter((b: Booking) => b.id !== id); localStorage.setItem("seoulmate_bookings", JSON.stringify(all)); return; }
       const { error } = await sb.from("bookings").delete().eq("id", id);
       if (error) throw error;
     },

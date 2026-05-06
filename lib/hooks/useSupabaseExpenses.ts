@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 import { fetchExchangeRate, krwToMyr } from "@/lib/utils/currency";
 import { calculateEqualSplits, calculateCustomSplits } from "@/lib/utils/expense-splitter";
 import type { Expense, NewExpenseForm, ExpenseSplit } from "@/types";
@@ -39,6 +39,7 @@ export function useExpenses(_tripId?: string) {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { return JSON.parse(localStorage.getItem("seoulmate_expenses") ?? "[]") as Expense[]; } catch { return []; } }
       const { data, error } = await sb
         .from("trip_expenses")
         .select("*")
@@ -74,6 +75,7 @@ export function useAddExpense(_tripId?: string) {
 
   return useMutation({
     mutationFn: async (form: NewExpenseForm) => {
+      if (!hasSupabase()) { let rate = 1; let amountMyr: number | null = null; try { rate = await fetchExchangeRate(); amountMyr = krwToMyr(form.amount_krw, rate); } catch {} const splits = form.split_equally ? calculateEqualSplits(form.amount_krw, amountMyr ?? 0, form.shared_with) : calculateCustomSplits(form.amount_krw, amountMyr ?? 0, form.custom_splits ?? {}); const expId = genId(); const expense = { id: expId, trip_id: TRIP_ID, schedule_id: null, title: form.title, category: form.category, amount_krw: form.amount_krw, amount_myr: amountMyr, exchange_rate: rate, paid_by: form.paid_by, receipt_url: null, notes: form.notes ?? null, expense_date: form.expense_date, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), splits: splits.map((s) => ({ id: genId(), expense_id: expId, user_id: s.userId, share_krw: s.shareKrw, share_myr: s.shareMyr ?? null, is_settled: false, settled_at: null })) }; const all = JSON.parse(localStorage.getItem("seoulmate_expenses") ?? "[]"); all.unshift(expense); localStorage.setItem("seoulmate_expenses", JSON.stringify(all)); return expense; }
       let rate = 1; let amountMyr: number | null = null;
       try { rate = await fetchExchangeRate(); amountMyr = krwToMyr(form.amount_krw, rate); } catch {}
 
@@ -109,6 +111,7 @@ export function useDeleteExpense(_tripId?: string) {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_expenses") ?? "[]").filter((e: Expense) => e.id !== id); localStorage.setItem("seoulmate_expenses", JSON.stringify(all)); return; }
       const { error } = await sb.from("trip_expenses").delete().eq("id", id);
       if (error) throw error;
     },
@@ -126,6 +129,7 @@ export function useSettledDebts() {
   const query = useQuery({
     queryKey: SETTLED_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { return new Set(JSON.parse(localStorage.getItem("seoulmate_settled_debts") ?? "[]")); } catch { return new Set<string>(); } }
       const { data, error } = await sb
         .from("settled_debts")
         .select("debtor_id, creditor_id")
@@ -161,6 +165,7 @@ export function useToggleSettledDebt() {
     mutationFn: async ({ debtorId, creditorId, currentlySettled }: {
       debtorId: string; creditorId: string; currentlySettled: boolean;
     }) => {
+      if (!hasSupabase()) { const key = `${debtorId}→${creditorId}`; const all = new Set(JSON.parse(localStorage.getItem("seoulmate_settled_debts") ?? "[]")); if (currentlySettled) all.delete(key); else all.add(key); localStorage.setItem("seoulmate_settled_debts", JSON.stringify([...all])); return; }
       if (currentlySettled) {
         await sb.from("settled_debts")
           .delete()

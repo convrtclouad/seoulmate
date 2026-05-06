@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 
 const TRIP_ID = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 
@@ -30,6 +30,7 @@ export function useJournalPosts(date: string) {
   const query = useQuery({
     queryKey: qKey(date),
     queryFn: async () => {
+      if (!hasSupabase()) return [];
       const { data, error } = await sb
         .from("journal_posts")
         .select("*")
@@ -66,6 +67,7 @@ export function useJournalDates() {
   return useQuery({
     queryKey: ["journal_dates", TRIP_ID],
     queryFn: async () => {
+      if (!hasSupabase()) return [];
       const { data, error } = await sb
         .from("journal_posts")
         .select("date")
@@ -90,6 +92,7 @@ export function useUpsertJournalPost() {
       text: string;
       photos: string[];
     }) => {
+      if (!hasSupabase()) throw new Error("Supabase not configured");
       const { data, error } = await sb
         .from("journal_posts")
         .upsert(
@@ -113,6 +116,7 @@ export function useDeleteJournalPost() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async ({ id, date }: { id: string; date: string }) => {
+      if (!hasSupabase()) return date;
       const { error } = await sb.from("journal_posts").delete().eq("id", id);
       if (error) throw error;
       return date;

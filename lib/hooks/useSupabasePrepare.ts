@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 const QUERY_KEY = ["prepare_items", TRIP_ID];
@@ -30,6 +30,7 @@ export function usePrepare() {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { const raw = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]"); return raw.map((i: PrepareItem & { assignee?: string }) => ({ ...i, trip_id: TRIP_ID, assignees: i.assignees ?? (i.assignee ? [i.assignee] : []) })) as PrepareItem[]; } catch { return []; } }
       const { data, error } = await sb
         .from("prepare_items")
         .select("*")
@@ -68,6 +69,7 @@ export function useAddPrepareItem() {
       text: string;
       assignees?: string[];
     }) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]"); const newItem = { id: genId(), trip_id: TRIP_ID, category: item.category, text: item.text, done: false, assignees: item.assignees ?? [], created_by: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }; all.push(newItem); localStorage.setItem("seoulmate_prepare", JSON.stringify(all)); return newItem; }
       const memberId = typeof window !== "undefined"
         ? (localStorage.getItem("seoulmate_user") ?? null)
         : null;
@@ -93,6 +95,7 @@ export function useTogglePrepareItem() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async ({ id, done }: { id: string; done: boolean }) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]").map((i: PrepareItem) => i.id === id ? { ...i, done: !done } : i); localStorage.setItem("seoulmate_prepare", JSON.stringify(all)); return; }
       const { error } = await sb
         .from("prepare_items")
         .update({ done: !done, updated_at: new Date().toISOString() })
@@ -108,6 +111,7 @@ export function useRemovePrepareItem() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]").filter((i: PrepareItem) => i.id !== id); localStorage.setItem("seoulmate_prepare", JSON.stringify(all)); return; }
       const { error } = await sb.from("prepare_items").delete().eq("id", id);
       if (error) throw error;
     },

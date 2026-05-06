@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 import type { Schedule, NewScheduleForm } from "@/types";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
@@ -17,6 +17,7 @@ export function useSchedule(_tripId?: string) {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]") as Schedule[]; return all.filter((s) => s.trip_id === TRIP_ID).sort((a, b) => a.activity_date.localeCompare(b.activity_date) || (a.start_time ?? "").localeCompare(b.start_time ?? "")); } catch { return []; } }
       const { data, error } = await sb
         .from("activities")
         .select("*")
@@ -70,6 +71,7 @@ export function useAddActivity(_tripId?: string) {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (form: NewScheduleForm) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]"); const item = { id: genId(), trip_id: TRIP_ID, title: form.title, description: form.description ?? null, category: form.category, activity_date: form.activity_date, start_time: form.start_time ?? null, end_time: form.end_time ?? null, place_name: form.place_name ?? null, address: form.address ?? null, naver_place_id: null, kakao_place_id: null, created_by: typeof window !== "undefined" ? (localStorage.getItem("seoulmate_user") ?? "unknown") : "unknown", created_at: new Date().toISOString(), updated_at: new Date().toISOString(), lat: null, lng: null }; all.push(item); localStorage.setItem("seoulmate_schedules", JSON.stringify(all)); return item; }
       const memberId = typeof window !== "undefined"
         ? (localStorage.getItem("seoulmate_user") ?? "unknown")
         : "unknown";
@@ -99,6 +101,7 @@ export function useDeleteActivity(_tripId?: string) {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]").filter((s: Schedule) => s.id !== id); localStorage.setItem("seoulmate_schedules", JSON.stringify(all)); return; }
       const { error } = await sb.from("activities").delete().eq("id", id);
       if (error) throw error;
     },

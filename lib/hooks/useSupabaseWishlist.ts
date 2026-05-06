@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 const QUERY_KEY = ["wishlist_items", TRIP_ID];
@@ -32,6 +32,7 @@ export function useWishlist() {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      if (!hasSupabase()) { try { return JSON.parse(localStorage.getItem("seoulmate_wishlist") ?? "[]") as WishlistItem[]; } catch { return []; } }
       const { data, error } = await sb
         .from("wishlist_items")
         .select("*")
@@ -66,6 +67,7 @@ export function useAddWishlistItem() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (item: Omit<WishlistItem, "id" | "trip_id" | "visited" | "created_at" | "created_by">) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_wishlist") ?? "[]"); const newItem = { id: genId(), trip_id: TRIP_ID, visited: false, created_by: null, ...item }; all.push(newItem); localStorage.setItem("seoulmate_wishlist", JSON.stringify(all)); return newItem; }
       const memberId = typeof window !== "undefined"
         ? (localStorage.getItem("seoulmate_user") ?? null)
         : null;
@@ -83,6 +85,7 @@ export function useToggleVisited() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async ({ id, visited }: { id: string; visited: boolean }) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_wishlist") ?? "[]").map((i: WishlistItem) => i.id === id ? { ...i, visited: !visited } : i); localStorage.setItem("seoulmate_wishlist", JSON.stringify(all)); return; }
       const { error } = await sb.from("wishlist_items").update({ visited: !visited }).eq("id", id);
       if (error) throw error;
     },
@@ -95,6 +98,7 @@ export function useRemoveWishlistItem() {
   const sb = getSupabaseClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (!hasSupabase()) { const all = JSON.parse(localStorage.getItem("seoulmate_wishlist") ?? "[]").filter((i: WishlistItem) => i.id !== id); localStorage.setItem("seoulmate_wishlist", JSON.stringify(all)); return; }
       const { error } = await sb.from("wishlist_items").delete().eq("id", id);
       if (error) throw error;
     },
