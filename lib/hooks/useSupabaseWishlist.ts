@@ -41,7 +41,7 @@ export function useWishlist() {
       if (error) throw error;
       return (data ?? []) as WishlistItem[];
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

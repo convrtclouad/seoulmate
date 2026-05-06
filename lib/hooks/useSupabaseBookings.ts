@@ -44,7 +44,7 @@ export function useBookings() {
       if (error) throw error;
       return (data ?? []).map(rowToBooking);
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

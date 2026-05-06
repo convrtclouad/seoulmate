@@ -45,7 +45,7 @@ export function useSchedule(_tripId?: string) {
         lng:           null,
       })) as Schedule[];
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

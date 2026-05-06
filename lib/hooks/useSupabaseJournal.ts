@@ -40,7 +40,7 @@ export function useJournalPosts(date: string) {
       if (error) throw error;
       return (data ?? []) as JournalPost[];
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

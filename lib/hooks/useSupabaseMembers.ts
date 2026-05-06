@@ -74,7 +74,7 @@ export function useMembers() {
       }
       return data as Member[];
     },
-    staleTime: 30_000,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

@@ -39,7 +39,7 @@ export function usePrepare() {
       if (error) throw error;
       return (data ?? []) as PrepareItem[];
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {

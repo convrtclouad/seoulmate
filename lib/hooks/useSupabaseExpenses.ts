@@ -48,7 +48,7 @@ export function useExpenses(_tripId?: string) {
       if (error) throw error;
       return (data ?? []).map(rowToExpense);
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {
@@ -137,7 +137,7 @@ export function useSettledDebts() {
       if (error) throw error;
       return new Set((data ?? []).map((r: { debtor_id: string; creditor_id: string }) => `${r.debtor_id}→${r.creditor_id}`));
     },
-    staleTime: 0,
+    staleTime: Infinity,
   });
 
   const refresh = useCallback(() => {
