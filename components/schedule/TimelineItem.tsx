@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   MapPin, Clock, Trash2,
@@ -8,6 +7,7 @@ import {
 } from "lucide-react";
 import type { Schedule, ActivityCategory } from "@/types";
 import { cn } from "@/lib/utils/cn";
+import { useActivityDone } from "@/lib/hooks/useActivityDone";
 
 const CATEGORY_CONFIG: Record<
   ActivityCategory,
@@ -21,19 +21,6 @@ const CATEGORY_CONFIG: Record<
   other:         { icon: HelpCircle,  color: "text-gray-400",   bg: "bg-gray-100",   label: "Other",       labelCn: "其他",   vibe: "🎉 娱乐玩乐" },
 };
 
-const DONE_KEY = "seoulmate_done_activities";
-
-function getCompleted(): Set<string> {
-  try { return new Set<string>(JSON.parse(localStorage.getItem(DONE_KEY) ?? "[]")); }
-  catch { return new Set(); }
-}
-
-function toggleCompleted(id: string): boolean {
-  const done = getCompleted();
-  if (done.has(id)) { done.delete(id); } else { done.add(id); }
-  localStorage.setItem(DONE_KEY, JSON.stringify([...done]));
-  return done.has(id);
-}
 
 interface TimelineItemProps {
   activity: Schedule;
@@ -52,14 +39,11 @@ function openNaverSearch(placeName: string, lat?: number | null, lng?: number | 
 export function TimelineItem({ activity, isLast = false, onDelete }: TimelineItemProps) {
   const config = CATEGORY_CONFIG[activity.category] ?? CATEGORY_CONFIG.other;
   const Icon   = config.icon;
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    setDone(getCompleted().has(activity.id));
-  }, [activity.id]);
+  const { done: doneSet, toggle } = useActivityDone();
+  const done = doneSet.has(activity.id);
 
   function handleToggleDone() {
-    setDone(toggleCompleted(activity.id));
+    toggle(activity.id);
   }
 
   return (
