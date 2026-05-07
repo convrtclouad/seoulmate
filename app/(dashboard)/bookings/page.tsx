@@ -374,6 +374,8 @@ const FIXED_HOTELS = [
     gradFrom:    "#FF385C",
     gradTo:      "#FF7A8A",
     badge:       "首尔 3晚",
+    photo:       "https://images.unsplash.com/photo-1519710164239-da123dc3b47c?w=600&auto=format&fit=crop",
+    desc:        "弘大艺文区 · 步行至홍대입구역5分钟 · 周边咖啡厅、酒吧超多",
   },
   {
     id:          "busan-airbnb",
@@ -389,6 +391,8 @@ const FIXED_HOTELS = [
     gradFrom:    "#0066FF",
     gradTo:      "#00C2FF",
     badge:       "釜山 2晚",
+    photo:       "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&auto=format&fit=crop",
+    desc:        "釜山海景住宿 · 靠近해운대海云台海滩 · 感受海边生活",
   },
   {
     id:          "incheon-hotel",
@@ -404,6 +408,8 @@ const FIXED_HOTELS = [
     gradFrom:    "#6C3FC5",
     gradTo:      "#9B6DFF",
     badge:       "机场 1晚",
+    photo:       "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=600&auto=format&fit=crop",
+    desc:        "仁川国际机场10分钟 · 最后一晚 · 方便明早办理登机",
   },
 ];
 
@@ -435,6 +441,18 @@ function FixedHotelCards() {
               <p className="text-white text-[10px] font-black">{h.badge}</p>
             </div>
           </div>
+
+          {/* Photo */}
+          {h.photo && (
+            <div className="relative h-36 w-full overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={h.photo} alt={h.name} className="h-full w-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+              <div className="absolute bottom-2 left-3 right-3">
+                <p className="text-white text-[10px] font-semibold leading-snug drop-shadow">{h.desc}</p>
+              </div>
+            </div>
+          )}
 
           {/* Body */}
           <div className="bg-white px-5 py-4">

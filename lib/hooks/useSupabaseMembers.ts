@@ -31,10 +31,10 @@ export const COLOR_OPTIONS = [
 ];
 
 const DEFAULT_MEMBERS: Member[] = [
-  { id: "bryan", name: "Bryan", emoji: "🐻", color: "from-emerald-400 to-teal-500" },
-  { id: "sarah", name: "Sarah", emoji: "🦊", color: "from-violet-400 to-purple-500" },
-  { id: "mike",  name: "Mike",  emoji: "🐺", color: "from-orange-400 to-amber-500"  },
-  { id: "priya", name: "Priya", emoji: "🐱", color: "from-rose-400 to-pink-500"     },
+  { id: "bryan",    name: "Bryan",     emoji: "🐻",  color: "from-emerald-400 to-teal-500"   },
+  { id: "changyao", name: "Chang Yao", emoji: "🐼",  color: "from-violet-400 to-purple-500"  },
+  { id: "mango",    name: "Mango",     emoji: "🦁",  color: "from-yellow-400 to-orange-400"  },
+  { id: "jackson",  name: "Jackson",   emoji: "🦊",  color: "from-sky-400 to-blue-500"       },
 ];
 
 function lsLoad(): Member[] {

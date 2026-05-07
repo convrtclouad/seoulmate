@@ -13,7 +13,7 @@ import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 
 const TRIP_ID    = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
-const TRIP_START = new Date("2026-05-07");
+const TRIP_START = new Date("2026-05-08"); // Day 1 = first day in Korea (arrived 07:00)
 const TRIP_END   = new Date("2026-05-15");
 
 const TRIP_DAYS = Array.from(
