@@ -375,7 +375,7 @@ const FIXED_HOTELS = [
     gradFrom:    "#FF385C",
     gradTo:      "#FF7A8A",
     badge:       "首尔 3晚",
-    photo:       "https://images.unsplash.com/photo-1584547750936-15b3c2358cc3?w=600&auto=format&fit=crop",
+    photo:       "https://a0.muscache.com/im/pictures/hosting/Hosting-1520976768288545606/original/b5a95827-7204-452d-a048-3b033c99bac7.jpeg?im_w=960",
     desc:        "弘大艺文区 · 步行至홍대입구역5分钟 · 周边咖啡厅、酒吧超多",
   },
   {

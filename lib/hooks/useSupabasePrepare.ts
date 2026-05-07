@@ -34,13 +34,16 @@ export function usePrepare() {
       if (!hasSupabase()) {
         try {
           const raw: PrepareItem[] = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]");
-          if (raw.length === 0) {
-            // First launch — seed default checklist for all 4 members
-            const defaults = getDefaultPrepareItems(TRIP_ID);
-            localStorage.setItem("seoulmate_prepare", JSON.stringify(defaults));
-            return defaults;
+          const defaults = getDefaultPrepareItems(TRIP_ID);
+          // Always merge: add any missing template items (by stable ptpl- id)
+          const existingIds = new Set(raw.map((i: PrepareItem) => i.id));
+          const missingDefaults = defaults.filter(d => !existingIds.has(d.id));
+          let merged = raw;
+          if (missingDefaults.length > 0) {
+            merged = [...missingDefaults, ...raw];
+            localStorage.setItem("seoulmate_prepare", JSON.stringify(merged));
           }
-          return raw.map((i: PrepareItem & { assignee?: string }) => ({
+          return merged.map((i: PrepareItem & { assignee?: string }) => ({
             ...i, trip_id: TRIP_ID,
             assignees: i.assignees ?? (i.assignee ? [i.assignee] : []),
           })) as PrepareItem[];
