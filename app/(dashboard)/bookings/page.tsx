@@ -393,7 +393,7 @@ const FIXED_HOTELS = [
     gradFrom:    "#0066FF",
     gradTo:      "#00C2FF",
     badge:       "釜山 2晚",
-    photo:       "https://images.unsplash.com/photo-1605870445919-838d190e8e1b?w=600&auto=format&fit=crop",
+    photo:       "https://a0.muscache.com/im/pictures/hosting/Hosting-1470114381300992067/original/a397a51b-1358-476f-b3ad-67d4cf89fff7.jpeg?im_w=960",
     desc:        "釜山海景住宿 · 靠近해운대海云台海滩 · 感受海边生活",
   },
   {

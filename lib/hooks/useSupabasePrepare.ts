@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
 import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
+import { getDefaultPrepareItems } from "@/lib/data/defaultPrepareItems";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
 const QUERY_KEY = ["prepare_items", TRIP_ID];
@@ -30,7 +31,21 @@ export function usePrepare() {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
-      if (!hasSupabase()) { try { const raw = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]"); return raw.map((i: PrepareItem & { assignee?: string }) => ({ ...i, trip_id: TRIP_ID, assignees: i.assignees ?? (i.assignee ? [i.assignee] : []) })) as PrepareItem[]; } catch { return []; } }
+      if (!hasSupabase()) {
+        try {
+          const raw: PrepareItem[] = JSON.parse(localStorage.getItem("seoulmate_prepare") ?? "[]");
+          if (raw.length === 0) {
+            // First launch — seed default checklist for all 4 members
+            const defaults = getDefaultPrepareItems(TRIP_ID);
+            localStorage.setItem("seoulmate_prepare", JSON.stringify(defaults));
+            return defaults;
+          }
+          return raw.map((i: PrepareItem & { assignee?: string }) => ({
+            ...i, trip_id: TRIP_ID,
+            assignees: i.assignees ?? (i.assignee ? [i.assignee] : []),
+          })) as PrepareItem[];
+        } catch { return getDefaultPrepareItems(TRIP_ID); }
+      }
       const { data, error } = await sb
         .from("prepare_items")
         .select("*")
