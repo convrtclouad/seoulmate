@@ -225,43 +225,43 @@ VALUES
  'seed');
 
 -- ═══════════════════════════════════════════════
--- DAY 4 · 11 May 2026 (Mon) — 首尔→釜山 · 해운대 · 자갈치
+-- DAY 4 · 11 May 2026 (Mon) — Flexible · 한강공원 · 釜山
 -- ═══════════════════════════════════════════════
 INSERT INTO public.activities
   (id, trip_id, title, description, category, activity_date, start_time, place_name, address, lat, lng, photo_url, created_by)
 VALUES
 ('seed-d4-1','korea-2025',
+ '🌸 한강공원 汉江公园 Flexible',
+ '自由活动日！汉江公园野餐、便利店美食（CU/GS25）、踩自行车、看汉江夕阳。下午再出发去釜山',
+ 'attraction','2026-05-11','10:00',
+ '한강공원 汉江公园','서울 마포구 한강공원',
+ 37.5283,126.9341,
+ 'https://images.unsplash.com/photo-1547143983-c6f81cbaff39?w=600&auto=format&fit=crop',
+ 'seed'),
+
+('seed-d4-2','korea-2025',
  '🚄 KTX 首尔→釜山 高铁',
- '서울역乘KTX出发，约2.5小时抵达釜山。票价约₩59,800/人。建议提前在Korail或SRT网站购票',
- 'transport','2026-05-11','09:00',
+ '서울역乘KTX出发前往釜山，约2.5小时。票价约₩59,800/人。提前在Korail或SRT购票',
+ 'transport','2026-05-11','14:00',
  '서울역 首尔站','서울 용산구 한강대로 405',
  37.5547,126.9707,
  'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&auto=format&fit=crop',
  'seed'),
 
-('seed-d4-2','korea-2025',
+('seed-d4-3','korea-2025',
  '🏠 Check-in 釜山 Airbnb',
- '抵达釜山，入住Airbnb，放行李，换上轻便衣服出发探索！',
- 'accommodation','2026-05-11','12:00',
+ '抵达釜山，入住Airbnb，放行李，换衣服出发探索！',
+ 'accommodation','2026-05-11','17:30',
  'Airbnb 釜山','부산',
  35.1796,129.0756,NULL,'seed'),
 
-('seed-d4-3','korea-2025',
+('seed-d4-4','korea-2025',
  '🌊 해운대 海云台海滩',
- '釜山最著名白沙滩！蓝色海水、周边餐厅酒吧，5月天气宜人非常适合散步。必去Blueline Park天空步道',
- 'attraction','2026-05-11','14:00',
+ '釜山最著名白沙滩！蓝色海水、周边餐厅酒吧，5月天气宜人。必去Blueline Park天空步道',
+ 'attraction','2026-05-11','19:00',
  '해운대 海云台','부산 해운대구 해운대해수욕장',
  35.1587,129.1604,
  'https://images.unsplash.com/photo-1541336032412-2048a678540d?w=600&auto=format&fit=crop',
- 'seed'),
-
-('seed-d4-4','korea-2025',
- '🐟 자갈치시장 札嘎其海鲜市场',
- '釜山最大海鲜市场！超新鲜海产现买现烤。特别推荐：刺身拼盘、活烤螃蟹、海鲜汤。傍晚市场最热闹',
- 'food','2026-05-11','17:30',
- '자갈치시장 札嘎其市场','부산 중구 자갈치해안로 52',
- 35.0974,129.0306,
- 'https://images.unsplash.com/photo-1571330735066-03aaa9429d89?w=600&auto=format&fit=crop',
  'seed');
 
 -- ═══════════════════════════════════════════════
