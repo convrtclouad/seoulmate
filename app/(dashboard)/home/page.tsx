@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, MapPin, Camera, Heart, ChevronRight, Navigation, Cloud, CloudOff } from "lucide-react";
+import { Plus, Camera, Heart, ChevronRight, Navigation, Cloud, CloudOff } from "lucide-react";
+import { TimelineItem } from "@/components/schedule/TimelineItem";
 import { hasSupabase } from "@/lib/supabase/client";
 import { tap } from "@/lib/utils/haptics";
 import { useSchedule, useAddActivity, useDeleteActivity } from "@/lib/hooks/useSupabaseSchedule";
@@ -21,18 +22,6 @@ const TRIP_DAYS = Array.from(
   (_, i) => addDays(TRIP_START, i)
 );
 
-const CAT_EMOJI: Record<string, string> = {
-  transport: "🚇", food: "🍜", attraction: "🏯",
-  accommodation: "🏨", shopping: "🛍️", other: "📌",
-};
-const CAT_COLOR: Record<string, string> = {
-  transport:     "bg-ginger-100 text-ginger-500",
-  food:          "bg-petal-100 text-petal-400",
-  attraction:    "bg-sage-100 text-sage-600",
-  accommodation: "bg-lavender-100 text-lavender-400",
-  shopping:      "bg-mist-100 text-mist-400",
-  other:         "bg-black/5 text-ink-muted",
-};
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -462,38 +451,14 @@ export default function HomePage() {
             <p className="text-xs text-ink-muted mt-1">点击右上角新增活动吧</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div>
             {dayActivities.map((act, idx) => (
-              <div key={act.id} className="relative flex gap-3 rounded-3xl bg-surface p-4"
-                   style={{ boxShadow: "var(--shadow-card)" }}>
-                <div className="flex flex-col items-center shrink-0">
-                  <div className={`h-9 w-9 rounded-2xl flex items-center justify-center text-lg ${CAT_COLOR[act.category] ?? "bg-black/5 text-ink-muted"}`}>
-                    {CAT_EMOJI[act.category] ?? "📌"}
-                  </div>
-                  {idx < dayActivities.length - 1 && (
-                    <div className="w-0.5 flex-1 mt-2 mb-[-12px]"
-                         style={{ background: "linear-gradient(to bottom, #C0D6C1, transparent)" }} />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 py-0.5">
-                  <p className="font-bold text-ink text-sm">{act.title}</p>
-                  {act.start_time && (
-                    <p className="text-xs text-ink-muted mt-0.5">
-                      {format(parseISO(`2000-01-01T${act.start_time}`), "HH:mm")}
-                      {act.end_time && ` – ${format(parseISO(`2000-01-01T${act.end_time}`), "HH:mm")}`}
-                    </p>
-                  )}
-                  {act.place_name && (
-                    <p className="text-xs text-ink-faint mt-0.5 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />{act.place_name}
-                    </p>
-                  )}
-                </div>
-                <button onClick={() => deleteActivity.mutate(act.id)}
-                  className="absolute top-3 right-3 text-ink-faint hover:text-petal-400 p-1 rounded-xl transition-colors">
-                  ×
-                </button>
-              </div>
+              <TimelineItem
+                key={act.id}
+                activity={act}
+                isLast={idx === dayActivities.length - 1}
+                onDelete={(id) => deleteActivity.mutate(id)}
+              />
             ))}
           </div>
         )}
