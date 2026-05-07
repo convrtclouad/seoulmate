@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback } from "react";
 import { getSupabaseClient, hasSupabase } from "@/lib/supabase/client";
+import { getDefaultActivities } from "@/lib/data/defaultActivities";
 import type { Schedule, NewScheduleForm } from "@/types";
 
 const TRIP_ID   = process.env.NEXT_PUBLIC_TRIP_ID ?? "demo-trip";
@@ -17,7 +18,16 @@ export function useSchedule(_tripId?: string) {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
-      if (!hasSupabase()) { try { const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]") as Schedule[]; return all.filter((s) => s.trip_id === TRIP_ID).sort((a, b) => a.activity_date.localeCompare(b.activity_date) || (a.start_time ?? "").localeCompare(b.start_time ?? "")); } catch { return []; } }
+      if (!hasSupabase()) {
+        try {
+          const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]") as Schedule[];
+          const filtered = all.filter((s) => s.trip_id === TRIP_ID).sort((a, b) =>
+            a.activity_date.localeCompare(b.activity_date) || (a.start_time ?? "").localeCompare(b.start_time ?? ""));
+          return filtered.length > 0 ? filtered : getDefaultActivities(TRIP_ID);
+        } catch {
+          return getDefaultActivities(TRIP_ID);
+        }
+      }
       const { data, error } = await sb
         .from("activities")
         .select("*")
@@ -25,7 +35,7 @@ export function useSchedule(_tripId?: string) {
         .order("activity_date")
         .order("start_time");
       if (error) throw error;
-      return (data ?? []).map((row) => ({
+      const activities = (data ?? []).map((row) => ({
         id:            row.id,
         trip_id:       row.trip_id,
         title:         row.title,
@@ -45,6 +55,7 @@ export function useSchedule(_tripId?: string) {
         lat:           row.lat ?? null,
         lng:           row.lng ?? null,
       })) as Schedule[];
+      return activities.length > 0 ? activities : getDefaultActivities(TRIP_ID);
     },
     staleTime: Infinity,
   });
