@@ -33,8 +33,16 @@ export function useActivityDone() {
         .select("activity_id")
         .eq("trip_id", TRIP_ID)
         .eq("member_id", memberId);
-      if (error) return lsGetDone();
-      return new Set((data ?? []).map((r: { activity_id: string }) => r.activity_id));
+      if (error) {
+        // Table may not exist yet — fall back to localStorage
+        return lsGetDone();
+      }
+      // Merge DB data with localStorage (so offline toggles persist)
+      const dbSet = new Set((data ?? []).map((r: { activity_id: string }) => r.activity_id));
+      const lsSet = lsGetDone();
+      // Union: trust both sources
+      for (const id of lsSet) dbSet.add(id);
+      return dbSet;
     },
     staleTime: Infinity,
   });
@@ -45,14 +53,19 @@ export function useActivityDone() {
 
   useEffect(() => {
     if (!hasSupabase()) return;
-    const ch = sb
-      .channel(`activity_done_${TRIP_ID}_${memberId}`)
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "activity_done",
-        filter: `trip_id=eq.${TRIP_ID}`,
-      }, refresh)
-      .subscribe();
-    return () => { sb.removeChannel(ch); };
+    // Try to subscribe; silently skip if table doesn't exist
+    try {
+      const ch = sb
+        .channel(`activity_done_${TRIP_ID}_${memberId}`)
+        .on("postgres_changes", {
+          event: "*", schema: "public", table: "activity_done",
+          filter: `trip_id=eq.${TRIP_ID}`,
+        }, refresh)
+        .subscribe();
+      return () => { sb.removeChannel(ch); };
+    } catch {
+      // Table doesn't exist — that's OK
+    }
   }, [sb, memberId, refresh]);
 
   const toggle = useMutation({
@@ -60,13 +73,14 @@ export function useActivityDone() {
       const done = query.data ?? new Set<string>();
       const isDone = done.has(activityId);
 
-      if (!hasSupabase()) {
-        const next = new Set(done);
-        if (isDone) next.delete(activityId); else next.add(activityId);
-        lsSetDone(next);
-        return;
-      }
+      // Always update localStorage first (offline-first)
+      const next = new Set(done);
+      if (isDone) next.delete(activityId); else next.add(activityId);
+      lsSetDone(next);
 
+      if (!hasSupabase()) return;
+
+      // Try to sync to DB (silently ignore if table doesn't exist)
       if (isDone) {
         await sb.from("activity_done")
           .delete()
@@ -80,7 +94,8 @@ export function useActivityDone() {
       }
     },
     onSuccess: () => refresh(),
+    onError: () => refresh(), // also refresh on error so UI reflects localStorage state
   });
 
-  return { done: query.data ?? new Set<string>(), toggle: toggle.mutate };
+  return { done: query.data ?? lsGetDone(), toggle: toggle.mutate };
 }

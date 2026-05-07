@@ -3,7 +3,8 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install",
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://placeholder.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "placeholder-key"
+    "NEXT_PUBLIC_SUPABASE_URL": "https://ihytuhtygewanhmuhpus.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloeXR1aHR5Z2V3YW5obXVocHVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwMjM4NDIsImV4cCI6MjA5MzU5OTg0Mn0.B69lkjEFf1zqmVLHzi9hN-3qejqgoPYF22uNhzfv604",
+    "NEXT_PUBLIC_TRIP_ID": "korea-2025"
   }
 }

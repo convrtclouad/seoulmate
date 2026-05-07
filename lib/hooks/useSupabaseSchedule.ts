@@ -59,9 +59,8 @@ export function useSchedule(_tripId?: string) {
         lat:           row.lat ?? null,
         lng:           row.lng ?? null,
       })) as Schedule[];
-      // If seed rows are in Supabase, return all DB rows; otherwise merge defaults + user-added
-      const seededInDb = activities.filter((a) => a.created_by === "seed");
-      if (seededInDb.length > 0) return activities;
+      // Always use hardcoded defaults for seed activities (they have photos + lat/lng)
+      // Only pull user-added activities from the DB
       const userAddedInDb = activities.filter((a) => a.created_by !== "seed");
       return [...defaults, ...userAddedInDb].sort(sortFn);
     },
