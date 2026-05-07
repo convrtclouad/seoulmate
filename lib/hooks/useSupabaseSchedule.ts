@@ -59,9 +59,13 @@ export function useSchedule(_tripId?: string) {
         lat:           row.lat ?? null,
         lng:           row.lng ?? null,
       })) as Schedule[];
-      // Always use hardcoded defaults for seed activities (they have photos + lat/lng)
-      // Only pull user-added activities from the DB
+      // DB now has full data (photos + lat/lng). Use DB data for seeds.
+      // If somehow seeds are missing from DB, fall back to hardcoded defaults.
+      const seededInDb = activities.filter((a) => a.created_by === "seed");
       const userAddedInDb = activities.filter((a) => a.created_by !== "seed");
+      if (seededInDb.length > 0) {
+        return [...seededInDb, ...userAddedInDb].sort(sortFn);
+      }
       return [...defaults, ...userAddedInDb].sort(sortFn);
     },
     staleTime: Infinity,
