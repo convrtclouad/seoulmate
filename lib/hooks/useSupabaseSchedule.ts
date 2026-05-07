@@ -18,14 +18,18 @@ export function useSchedule(_tripId?: string) {
   const query = useQuery({
     queryKey: QUERY_KEY,
     queryFn: async () => {
+      const defaults = getDefaultActivities(TRIP_ID);
+      const sortFn = (a: Schedule, b: Schedule) =>
+        a.activity_date.localeCompare(b.activity_date) || (a.start_time ?? "").localeCompare(b.start_time ?? "");
+
       if (!hasSupabase()) {
         try {
           const all = JSON.parse(localStorage.getItem("seoulmate_schedules") ?? "[]") as Schedule[];
-          const filtered = all.filter((s) => s.trip_id === TRIP_ID).sort((a, b) =>
-            a.activity_date.localeCompare(b.activity_date) || (a.start_time ?? "").localeCompare(b.start_time ?? ""));
-          return filtered.length > 0 ? filtered : getDefaultActivities(TRIP_ID);
+          // Keep defaults + any user-added activities (non-seed IDs)
+          const userAdded = all.filter((s) => s.trip_id === TRIP_ID && !s.id.startsWith("seed-"));
+          return [...defaults, ...userAdded].sort(sortFn);
         } catch {
-          return getDefaultActivities(TRIP_ID);
+          return defaults;
         }
       }
       const { data, error } = await sb
@@ -55,7 +59,11 @@ export function useSchedule(_tripId?: string) {
         lat:           row.lat ?? null,
         lng:           row.lng ?? null,
       })) as Schedule[];
-      return activities.length > 0 ? activities : getDefaultActivities(TRIP_ID);
+      // If seed rows are in Supabase, return all DB rows; otherwise merge defaults + user-added
+      const seededInDb = activities.filter((a) => a.created_by === "seed");
+      if (seededInDb.length > 0) return activities;
+      const userAddedInDb = activities.filter((a) => a.created_by !== "seed");
+      return [...defaults, ...userAddedInDb].sort(sortFn);
     },
     staleTime: Infinity,
   });

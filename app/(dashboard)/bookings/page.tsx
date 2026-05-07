@@ -369,12 +369,13 @@ const FIXED_HOTELS = [
     checkOut:    "2026-05-11",
     nights:      3,
     code:        "HMXKZYT2HC",
-    link:        "https://www.airbnb.co.uk/trips/v1/reservation-details/ro/RESERVATION2_CHECKIN/HMXKZYT2HC",
+    link:        "https://www.airbnb.co.uk/rooms/1520976768288545606",
+    airbnbLink:  "https://www.airbnb.co.uk/rooms/1520976768288545606",
     naverSearch: "홍대 마포구",
     gradFrom:    "#FF385C",
     gradTo:      "#FF7A8A",
     badge:       "首尔 3晚",
-    photo:       "https://images.unsplash.com/photo-1519710164239-da123dc3b47c?w=600&auto=format&fit=crop",
+    photo:       "https://images.unsplash.com/photo-1584547750936-15b3c2358cc3?w=600&auto=format&fit=crop",
     desc:        "弘大艺文区 · 步行至홍대입구역5分钟 · 周边咖啡厅、酒吧超多",
   },
   {
@@ -387,11 +388,12 @@ const FIXED_HOTELS = [
     nights:      2,
     code:        null,
     link:        "https://www.airbnb.com/l/sBifFSts",
+    airbnbLink:  "https://www.airbnb.com/l/sBifFSts",
     naverSearch: "해운대 부산",
     gradFrom:    "#0066FF",
     gradTo:      "#00C2FF",
     badge:       "釜山 2晚",
-    photo:       "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&auto=format&fit=crop",
+    photo:       "https://images.unsplash.com/photo-1605870445919-838d190e8e1b?w=600&auto=format&fit=crop",
     desc:        "釜山海景住宿 · 靠近해운대海云台海滩 · 感受海边生活",
   },
   {
@@ -404,6 +406,7 @@ const FIXED_HOTELS = [
     nights:      1,
     code:        "Trip.com #70141808",
     link:        "https://my.trip.com/hotels/detail/?cityEnName=Incheon&cityId=410&hotelId=70141808&checkIn=2026-05-13&checkOut=2026-05-14&adult=4",
+    airbnbLink:  null,
     naverSearch: "인천국제공항 근처 호텔",
     gradFrom:    "#6C3FC5",
     gradTo:      "#9B6DFF",
@@ -489,7 +492,7 @@ function FixedHotelCards() {
               <a href={h.link} target="_blank" rel="noreferrer"
                  className="flex-1 text-center rounded-2xl py-2.5 text-xs font-bold text-white"
                  style={{ background: `linear-gradient(135deg, ${h.gradFrom}, ${h.gradTo})` }}>
-                🔗 查看预订
+                {h.airbnbLink ? "🏠 Airbnb 查看" : "🔗 Trip.com 查看"}
               </a>
               <a href={`https://map.naver.com/v5/search/${encodeURIComponent(h.naverSearch)}`}
                  target="_blank" rel="noreferrer"
