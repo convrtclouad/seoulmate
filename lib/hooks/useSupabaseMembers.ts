@@ -37,12 +37,29 @@ const DEFAULT_MEMBERS: Member[] = [
   { id: "jackson",  name: "Jackson",   emoji: "🦊",  color: "from-sky-400 to-blue-500"       },
 ];
 
+const REQUIRED_MEMBER_IDS = ["bryan", "changyao", "mango", "jackson"];
+
 function lsLoad(): Member[] {
   if (typeof window === "undefined") return DEFAULT_MEMBERS;
   try {
     const s = localStorage.getItem("seoulmate_members");
-    return s ? JSON.parse(s) : DEFAULT_MEMBERS;
-  } catch { return DEFAULT_MEMBERS; }
+    if (!s) {
+      localStorage.setItem("seoulmate_members", JSON.stringify(DEFAULT_MEMBERS));
+      return DEFAULT_MEMBERS;
+    }
+    const stored: Member[] = JSON.parse(s);
+    const storedIds = new Set(stored.map((m) => m.id));
+    // If all 4 required members aren't present, stale data → reset
+    const hasAll = REQUIRED_MEMBER_IDS.every((id) => storedIds.has(id));
+    if (!hasAll) {
+      localStorage.setItem("seoulmate_members", JSON.stringify(DEFAULT_MEMBERS));
+      return DEFAULT_MEMBERS;
+    }
+    return stored;
+  } catch {
+    localStorage.setItem("seoulmate_members", JSON.stringify(DEFAULT_MEMBERS));
+    return DEFAULT_MEMBERS;
+  }
 }
 
 export function getMembersSync(): Member[] { return lsLoad(); }
