@@ -130,7 +130,7 @@ export function useInsertJournalPost() {
       const now = new Date().toISOString();
       const { data, error } = await sb
         .from("journal_posts")
-        .insert({ ...post, id: genId(), trip_id: TRIP_ID, created_at: now, updated_at: now })
+        .insert({ ...post, trip_id: TRIP_ID, created_at: now, updated_at: now })
         .select()
         .single();
       if (error) throw error;

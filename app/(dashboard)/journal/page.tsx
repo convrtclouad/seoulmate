@@ -334,7 +334,7 @@ function WriteSheet({
 
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="btn-secondary flex-1">取消</button>
-            <button onClick={handleSave} disabled={saving || (!text.trim() && !photos.length)}
+            <button onClick={handleSave} disabled={saving}
               className="btn-primary flex-1 disabled:opacity-40">
               {saving ? "保存中…" : <><Save className="h-4 w-4" /> {isEditing ? "更新" : "发布"}</>}
             </button>
