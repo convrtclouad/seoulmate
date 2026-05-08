@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, X, Save, ImagePlus, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { Plus, X, Save, ImagePlus, ChevronLeft, ChevronRight, Pencil, Trash2, Download } from "lucide-react";
 import {
-  useJournalPosts, useJournalDates, useUpsertJournalPost, useDeleteJournalPost,
+  useJournalPosts, useJournalDates, useUpsertJournalPost,
+  useInsertJournalPost, useUpdateJournalPost, useDeleteJournalPost,
 } from "@/lib/hooks/useSupabaseJournal";
 import { useMembers } from "@/lib/hooks/useSupabaseMembers";
 import { compressImage } from "@/lib/utils/imageCompress";
@@ -20,14 +21,28 @@ const TRIP_DAYS  = Array.from(
 const MOODS = ["😊","🥰","😄","😎","😌","😴","🤩","😋","🥵","🌧️"];
 
 /* ── Photo grid inside a post card ── */
-function PhotoGrid({ photos, onNav }: { photos: string[]; onNav?: (idx: number) => void }) {
+function PhotoGrid({ photos }: { photos: string[] }) {
   const [idx, setIdx] = useState(0);
   if (!photos.length) return null;
 
+  function downloadPhoto(src: string) {
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = "seoulmate-photo.jpg";
+    a.click();
+  }
+
   if (photos.length === 1) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={photos[0]} alt="photo" className="w-full aspect-[4/3] object-cover" />
+      <div className="relative">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photos[0]} alt="photo" className="w-full aspect-[4/3] object-cover" />
+        <button
+          onClick={() => downloadPhoto(photos[0])}
+          className="absolute bottom-2 right-2 h-7 w-7 rounded-full bg-black/50 flex items-center justify-center">
+          <Download className="h-3.5 w-3.5 text-white" />
+        </button>
+      </div>
     );
   }
 
@@ -35,8 +50,15 @@ function PhotoGrid({ photos, onNav }: { photos: string[]; onNav?: (idx: number) 
     return (
       <div className="flex gap-0.5">
         {photos.map((p, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={i} src={p} alt="" className="flex-1 aspect-square object-cover" />
+          <div key={i} className="relative flex-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p} alt="" className="w-full aspect-square object-cover" />
+            <button
+              onClick={() => downloadPhoto(p)}
+              className="absolute bottom-1 right-1 h-6 w-6 rounded-full bg-black/50 flex items-center justify-center">
+              <Download className="h-3 w-3 text-white" />
+            </button>
+          </div>
         ))}
       </div>
     );
@@ -71,6 +93,17 @@ function PhotoGrid({ photos, onNav }: { photos: string[]; onNav?: (idx: number) 
           </div>
         </>
       )}
+      {/* Download current photo */}
+      <button
+        onClick={() => {
+          const a = document.createElement("a");
+          a.href = photos[idx];
+          a.download = "seoulmate-photo.jpg";
+          a.click();
+        }}
+        className="absolute bottom-2 right-2 h-7 w-7 rounded-full bg-black/50 flex items-center justify-center">
+        <Download className="h-3.5 w-3.5 text-white" />
+      </button>
     </div>
   );
 }
@@ -161,6 +194,7 @@ function WriteSheet({
   memberId,
   memberName,
   memberEmoji,
+  postId,
   existing,
   onClose,
 }: {
@@ -168,11 +202,17 @@ function WriteSheet({
   memberId: string;
   memberName: string;
   memberEmoji: string;
+  postId?: string;
   existing: import("@/lib/hooks/useSupabaseJournal").JournalPost | null;
   onClose: () => void;
 }) {
-  const upsert  = useUpsertJournalPost();
+  const insertPost = useInsertJournalPost();
+  const updatePost = useUpdateJournalPost();
+  // Keep upsert available for backward compat but don't use for new posts
+  const _upsert = useUpsertJournalPost();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const isEditing = !!postId;
 
   const [mood,    setMood]    = useState(existing?.mood ?? "😊");
   const [text,    setText]    = useState(existing?.text ?? "");
@@ -195,10 +235,14 @@ function WriteSheet({
     if (saving) return;
     setSaving(true);
     try {
-      await upsert.mutateAsync({
-        date, member_id: memberId, member_name: memberName,
-        member_emoji: memberEmoji, mood, text, photos,
-      });
+      if (isEditing && postId) {
+        await updatePost.mutateAsync({ id: postId, date, mood, text, photos });
+      } else {
+        await insertPost.mutateAsync({
+          date, member_id: memberId, member_name: memberName,
+          member_emoji: memberEmoji, mood, text, photos,
+        });
+      }
       success();
       onClose();
     } finally { setSaving(false); }
@@ -271,7 +315,8 @@ function WriteSheet({
                 )}
               </button>
             </div>
-            <input ref={fileRef} type="file" accept="image/*" multiple capture="environment"
+            {/* Bug 3 fix: removed capture="environment" to allow gallery selection */}
+            <input ref={fileRef} type="file" accept="image/*" multiple
               className="hidden" onChange={handlePhotoAdd} />
           </div>
 
@@ -291,7 +336,7 @@ function WriteSheet({
             <button onClick={onClose} className="btn-secondary flex-1">取消</button>
             <button onClick={handleSave} disabled={saving || (!text.trim() && !photos.length)}
               className="btn-primary flex-1 disabled:opacity-40">
-              {saving ? "保存中…" : <><Save className="h-4 w-4" /> 发布</>}
+              {saving ? "保存中…" : <><Save className="h-4 w-4" /> {isEditing ? "更新" : "发布"}</>}
             </button>
           </div>
         </div>
@@ -307,6 +352,7 @@ export default function JournalPage() {
   const [selected,   setSelected]            = useState(format(TRIP_DAYS[0], "yyyy-MM-dd"));
   const [currentId,  setCurrentId]           = useState("");
   const [showWrite,  setShowWrite]           = useState(false);
+  const [editingPost, setEditingPost]        = useState<import("@/lib/hooks/useSupabaseJournal").JournalPost | null>(null);
   const { data: posts = [], isLoading }      = useJournalPosts(selected);
   const deletePost                           = useDeleteJournalPost();
 
@@ -314,9 +360,10 @@ export default function JournalPage() {
     setCurrentId(localStorage.getItem("seoulmate_user") ?? "");
   }, []);
 
-  const me         = members.find((m) => m.id === currentId);
-  const myPost     = posts.find((p) => p.member_id === currentId) ?? null;
-  const otherPosts = posts.filter((p) => p.member_id !== currentId);
+  const me = members.find((m) => m.id === currentId);
+
+  // Sort all posts by created_at ascending
+  const sortedPosts = [...posts].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
   return (
     <div className="flex flex-col min-h-dvh bg-cream">
@@ -379,13 +426,13 @@ export default function JournalPage() {
         </p>
       </div>
 
-      {/* Posts feed */}
+      {/* Posts feed — all posts sorted by created_at */}
       <div className="flex-1 px-4 pb-32 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 rounded-full border-2 border-lavender/30 border-t-lavender animate-spin" />
           </div>
-        ) : posts.length === 0 ? (
+        ) : sortedPosts.length === 0 ? (
           <div className="rounded-3xl bg-surface p-8 text-center" style={{ boxShadow: "var(--shadow-card)" }}>
             <div className="text-5xl mb-3">📖</div>
             <p className="font-bold text-ink text-sm">
@@ -398,46 +445,56 @@ export default function JournalPage() {
           </div>
         ) : (
           <>
-            {/* My post first */}
-            {myPost && (
+            {sortedPosts.map((post) => (
               <PostCard
-                post={myPost}
-                isMe
-                onEdit={() => { tap(); setShowWrite(true); }}
-                onDelete={() => deletePost.mutate({ id: myPost.id, date: selected })}
+                key={post.id}
+                post={post}
+                isMe={post.member_id === currentId}
+                onEdit={() => { tap(); setEditingPost(post); }}
+                onDelete={() => deletePost.mutate({ id: post.id, date: selected })}
               />
-            )}
-            {/* Others' posts */}
-            {otherPosts.map((post) => (
-              <PostCard key={post.id} post={post} isMe={false} onEdit={() => {}} onDelete={() => {}} />
             ))}
           </>
         )}
       </div>
 
-      {/* FAB */}
+      {/* FAB — always creates a NEW post */}
       <button onClick={() => { tap(); setShowWrite(true); }}
         className="fixed bottom-32 right-5 h-14 w-14 rounded-full text-white flex items-center justify-center z-30"
         style={{ background: "#8B7AB8", boxShadow: "0 6px 24px rgba(139,122,184,0.35)" }}>
-        {myPost ? <Pencil className="h-5 w-5" /> : <Plus className="h-6 w-6" />}
+        <Plus className="h-6 w-6" />
       </button>
 
-      {/* Write sheet */}
+      {/* Write sheet — new post */}
       {showWrite && me && (
         <WriteSheet
           date={selected}
           memberId={me.id}
           memberName={me.name}
           memberEmoji={me.emoji}
-          existing={myPost}
+          existing={null}
           onClose={() => setShowWrite(false)}
         />
       )}
-      {showWrite && !me && (
+
+      {/* Edit sheet — existing post */}
+      {editingPost && me && (
+        <WriteSheet
+          date={selected}
+          memberId={me.id}
+          memberName={me.name}
+          memberEmoji={me.emoji}
+          postId={editingPost.id}
+          existing={editingPost}
+          onClose={() => setEditingPost(null)}
+        />
+      )}
+
+      {(showWrite || editingPost) && !me && (
         <div className="fixed inset-0 z-50 flex items-end" style={{ background: "rgba(0,0,0,0.35)" }}>
           <div className="w-full bg-cream rounded-t-4xl p-6 pb-10">
             <p className="font-bold text-ink text-center mb-4">请先在成员页面选择你的身份</p>
-            <button onClick={() => setShowWrite(false)} className="btn-secondary w-full">关闭</button>
+            <button onClick={() => { setShowWrite(false); setEditingPost(null); }} className="btn-secondary w-full">关闭</button>
           </div>
         </div>
       )}

@@ -119,6 +119,46 @@ export function useDeleteExpense(_tripId?: string) {
   });
 }
 
+export function useUpdateExpense(_tripId?: string) {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async ({ id, form }: { id: string; form: NewExpenseForm }) => {
+      if (!hasSupabase()) {
+        const all = JSON.parse(localStorage.getItem("seoulmate_expenses") ?? "[]") as Expense[];
+        const idx = all.findIndex((e) => e.id === id);
+        if (idx !== -1) {
+          all[idx] = { ...all[idx], title: form.title, category: form.category, amount_krw: form.amount_krw, paid_by: form.paid_by, expense_date: form.expense_date, notes: form.notes ?? null, updated_at: new Date().toISOString() };
+          localStorage.setItem("seoulmate_expenses", JSON.stringify(all));
+        }
+        return;
+      }
+      let rate = 1; let amountMyr: number | null = null;
+      try { rate = await fetchExchangeRate(); amountMyr = krwToMyr(form.amount_krw, rate); } catch {}
+
+      const splits = form.split_equally
+        ? calculateEqualSplits(form.amount_krw, amountMyr ?? 0, form.shared_with)
+        : calculateCustomSplits(form.amount_krw, amountMyr ?? 0, form.custom_splits ?? {});
+
+      const splitRows: ExpenseSplit[] = splits.map((s) => ({
+        id: genId(), expense_id: id, user_id: s.userId,
+        share_krw: s.shareKrw, share_myr: s.shareMyr ?? null,
+        is_settled: false, settled_at: null,
+      }));
+
+      const { error } = await sb.from("trip_expenses").update({
+        title: form.title, category: form.category,
+        amount_krw: form.amount_krw, amount_myr: amountMyr,
+        exchange_rate: rate, paid_by: form.paid_by,
+        expense_date: form.expense_date, notes: form.notes ?? null,
+        splits: splitRows, updated_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEY }),
+  });
+}
+
 /* ── Settled debts (Supabase-backed) ── */
 const SETTLED_KEY = ["settled_debts", TRIP_ID];
 

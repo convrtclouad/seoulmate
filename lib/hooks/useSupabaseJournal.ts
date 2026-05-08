@@ -111,6 +111,66 @@ export function useUpsertJournalPost() {
   });
 }
 
+function genId() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36); }
+
+export function useInsertJournalPost() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async (post: {
+      date: string;
+      member_id: string;
+      member_name: string;
+      member_emoji: string;
+      mood: string;
+      text: string;
+      photos: string[];
+    }) => {
+      if (!hasSupabase()) throw new Error("Supabase not configured");
+      const now = new Date().toISOString();
+      const { data, error } = await sb
+        .from("journal_posts")
+        .insert({ ...post, id: genId(), trip_id: TRIP_ID, created_at: now, updated_at: now })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as JournalPost;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: qKey(data.date) });
+      qc.invalidateQueries({ queryKey: ["journal_dates", TRIP_ID] });
+    },
+  });
+}
+
+export function useUpdateJournalPost() {
+  const qc = useQueryClient();
+  const sb = getSupabaseClient();
+  return useMutation({
+    mutationFn: async (post: {
+      id: string;
+      date: string;
+      mood: string;
+      text: string;
+      photos: string[];
+    }) => {
+      if (!hasSupabase()) throw new Error("Supabase not configured");
+      const { data, error } = await sb
+        .from("journal_posts")
+        .update({ mood: post.mood, text: post.text, photos: post.photos, updated_at: new Date().toISOString() })
+        .eq("id", post.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as JournalPost;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: qKey(data.date) });
+      qc.invalidateQueries({ queryKey: ["journal_dates", TRIP_ID] });
+    },
+  });
+}
+
 export function useDeleteJournalPost() {
   const qc = useQueryClient();
   const sb = getSupabaseClient();

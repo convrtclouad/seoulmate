@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Utensils, Car, Hotel, ShoppingBag, Ticket, Heart, MoreHorizontal, ImagePlus, X } from "lucide-react";
 import { fetchExchangeRate, krwToMyr, formatMyr } from "@/lib/utils/currency";
 import { tap } from "@/lib/utils/haptics";
-import type { NewExpenseForm, ExpenseCategory } from "@/types";
+import type { NewExpenseForm, ExpenseCategory, Expense } from "@/types";
 import type { Member } from "@/lib/hooks/useMembers";
 
 interface ExpenseFormProps {
@@ -13,6 +13,8 @@ interface ExpenseFormProps {
   currentMemberId: string;
   onSubmit: (form: NewExpenseForm) => Promise<void>;
   onCancel: () => void;
+  initialValues?: Partial<Expense>;
+  onUpdate?: (form: NewExpenseForm) => Promise<void>;
 }
 
 const CATEGORIES: { value: ExpenseCategory; label: string; icon: React.ElementType; bg: string; text: string }[] = [
@@ -34,21 +36,28 @@ const PAID_COLORS = [
   { bg: "bg-mist-500",   text: "text-white" },
 ];
 
-export function ExpenseForm({ members, currentMemberId, onSubmit, onCancel }: ExpenseFormProps) {
-  const [title, setTitle]               = useState("");
-  const [category, setCategory]         = useState<ExpenseCategory>("food");
-  const [amountKrw, setAmountKrw]       = useState("");
-  const [paidBy, setPaidBy]             = useState(currentMemberId);
-  const [sharedWith, setSharedWith]     = useState<string[]>(members.map((m) => m.id));
+export function ExpenseForm({ members, currentMemberId, onSubmit, onCancel, initialValues, onUpdate }: ExpenseFormProps) {
+  const isEditMode = !!onUpdate;
+  const [title, setTitle]               = useState(initialValues?.title ?? "");
+  const [category, setCategory]         = useState<ExpenseCategory>(initialValues?.category ?? "food");
+  const [amountKrw, setAmountKrw]       = useState(initialValues?.amount_krw ? String(initialValues.amount_krw) : "");
+  const [paidBy, setPaidBy]             = useState(initialValues?.paid_by ?? currentMemberId);
+  const [sharedWith, setSharedWith]     = useState<string[]>(
+    initialValues?.splits?.map((s) => s.user_id) ?? members.map((m) => m.id)
+  );
   const [splitEqually, setSplitEqually] = useState(true);
-  const [expenseDate, setExpenseDate]   = useState(format(new Date(), "yyyy-MM-dd"));
-  const [notes, setNotes]               = useState("");
+  const [expenseDate, setExpenseDate]   = useState(initialValues?.expense_date ?? format(new Date(), "yyyy-MM-dd"));
+  const [notes, setNotes]               = useState(initialValues?.notes ?? "");
   const [loading, setLoading]           = useState(false);
   const [myrPreview, setMyrPreview]     = useState<string | null>(null);
   const [photo, setPhoto]               = useState<string | null>(null); // base64
   const fileRef                         = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setSharedWith(members.map((m) => m.id)); }, [members]);
+  useEffect(() => {
+    if (!initialValues?.splits) {
+      setSharedWith(members.map((m) => m.id));
+    }
+  }, [members]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const krw = parseFloat(amountKrw);
@@ -75,17 +84,22 @@ export function ExpenseForm({ members, currentMemberId, onSubmit, onCancel }: Ex
     e.preventDefault();
     if (!amountKrw || sharedWith.length === 0) return;
     setLoading(true);
+    const formData: NewExpenseForm = {
+      title,
+      category,
+      amount_krw: parseFloat(amountKrw),
+      paid_by: paidBy,
+      shared_with: sharedWith,
+      split_equally: splitEqually,
+      notes: notes || undefined,
+      expense_date: expenseDate,
+    };
     try {
-      await onSubmit({
-        title,
-        category,
-        amount_krw: parseFloat(amountKrw),
-        paid_by: paidBy,
-        shared_with: sharedWith,
-        split_equally: splitEqually,
-        notes: notes || undefined,
-        expense_date: expenseDate,
-      });
+      if (isEditMode && onUpdate) {
+        await onUpdate(formData);
+      } else {
+        await onSubmit(formData);
+      }
     } finally {
       setLoading(false);
     }
@@ -235,7 +249,7 @@ export function ExpenseForm({ members, currentMemberId, onSubmit, onCancel }: Ex
         <button type="button" onClick={onCancel} className="btn-secondary flex-1">取消</button>
         <button type="submit" disabled={loading}
           className="btn-primary flex-1 disabled:opacity-60">
-          {loading ? "记录中…" : "记录消费"}
+          {loading ? (isEditMode ? "更新中…" : "记录中…") : (isEditMode ? "更新" : "记录消费")}
         </button>
       </div>
     </form>

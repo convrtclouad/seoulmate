@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, List, BarChart3, RefreshCw } from "lucide-react";
-import { useExpenses, useAddExpense, useSettledDebts, useToggleSettledDebt } from "@/lib/hooks/useSupabaseExpenses";
+import { Plus, List, BarChart3, RefreshCw, Pencil, Trash2 } from "lucide-react";
+import { useExpenses, useAddExpense, useDeleteExpense, useUpdateExpense, useSettledDebts, useToggleSettledDebt } from "@/lib/hooks/useSupabaseExpenses";
 import { useMembers } from "@/lib/hooks/useSupabaseMembers";
+import type { Expense } from "@/types";
 import { LoadingPlane } from "@/components/ui/LoadingPlane";
 import { Modal } from "@/components/ui/Modal";
 import { ExpenseForm } from "@/components/expenses/ExpenseForm";
@@ -58,12 +59,16 @@ function useMyrRate() {
 export default function ExpensesPage() {
   const [tab, setTab]           = useState<Tab>("list");
   const [showForm, setShowForm] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [filterMember, setFilterMember] = useState<string | null>(null);
   const [currentId, setCurrentId] = useState("");
 
   const { data: expenses = [], isLoading } = useExpenses(TRIP_ID);
   const { data: members = [] }             = useMembers();
-  const addExpense = useAddExpense(TRIP_ID);
+  const addExpense    = useAddExpense(TRIP_ID);
+  const deleteExpense = useDeleteExpense(TRIP_ID);
+  const updateExpense = useUpdateExpense(TRIP_ID);
   const { data: settled = new Set<string>() } = useSettledDebts();
   const toggleSettleMutation = useToggleSettledDebt();
   const { rate: myrRate, loading: rateLoading, refresh: refreshRate } = useMyrRate();
@@ -225,26 +230,57 @@ export default function ExpensesPage() {
               {filtered.map((exp) => {
                 const payer = members.find(m => m.id === exp.paid_by);
                 const myrEquiv = myrRate ? (exp.amount_krw / myrRate).toFixed(2) : null;
+                const isConfirmingDelete = confirmDeleteId === exp.id;
                 return (
-                  <div key={exp.id} className="rounded-3xl bg-surface p-4 flex items-center gap-3"
+                  <div key={exp.id} className="rounded-3xl bg-surface p-4"
                        style={{ boxShadow: "var(--shadow-card)" }}>
-                    <div className={`h-11 w-11 rounded-2xl ${CAT_BG[exp.category ?? "other"] ?? "bg-black/5"} flex items-center justify-center text-xl shrink-0`}>
-                      {CAT_EMOJI[exp.category ?? "other"] ?? "💳"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-ink text-sm truncate">{exp.title}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {payer && <span className="text-base">{payer.emoji}</span>}
-                        <span className="text-xs text-ink-muted">{payer?.name ?? exp.paid_by} 付款</span>
-                        <span className="text-ink-faint text-xs">· {exp.expense_date}</span>
+                    <div className="flex items-center gap-3">
+                      <div className={`h-11 w-11 rounded-2xl ${CAT_BG[exp.category ?? "other"] ?? "bg-black/5"} flex items-center justify-center text-xl shrink-0`}>
+                        {CAT_EMOJI[exp.category ?? "other"] ?? "💳"}
                       </div>
-                      {myrEquiv && (
-                        <p className="text-[10px] text-ink-faint mt-0.5">≈ RM {myrEquiv}</p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-ink text-sm truncate">{exp.title}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {payer && <span className="text-base">{payer.emoji}</span>}
+                          <span className="text-xs text-ink-muted">{payer?.name ?? exp.paid_by} 付款</span>
+                          <span className="text-ink-faint text-xs">· {exp.expense_date}</span>
+                        </div>
+                        {myrEquiv && (
+                          <p className="text-[10px] text-ink-faint mt-0.5">≈ RM {myrEquiv}</p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 shrink-0">
+                        <span className="font-black text-ink text-sm whitespace-nowrap">
+                          ₩{exp.amount_krw.toLocaleString("ko-KR")}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => { setEditingExpense(exp); }}
+                            className="h-7 w-7 rounded-xl bg-lavender-100 flex items-center justify-center">
+                            <Pencil className="h-3.5 w-3.5 text-lavender" />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteId(exp.id)}
+                            className="h-7 w-7 rounded-xl bg-black/5 flex items-center justify-center">
+                            <Trash2 className="h-3.5 w-3.5 text-ink-faint" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-black text-ink text-sm whitespace-nowrap">
-                      ₩{exp.amount_krw.toLocaleString("ko-KR")}
-                    </span>
+                    {isConfirmingDelete && (
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-black/5">
+                        <button
+                          onClick={() => { deleteExpense.mutate(exp.id); setConfirmDeleteId(null); }}
+                          className="flex-1 text-xs font-bold bg-petal-100 text-petal-400 rounded-xl py-1.5">
+                          确认删除
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="flex-1 text-xs font-bold bg-black/5 text-ink-muted rounded-xl py-1.5">
+                          取消
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -270,6 +306,22 @@ export default function ExpensesPage() {
           onSubmit={async (form) => { await addExpense.mutateAsync(form); setShowForm(false); }}
           onCancel={() => setShowForm(false)}
         />
+      </Modal>
+
+      <Modal open={!!editingExpense} onClose={() => setEditingExpense(null)} title="编辑消费" size="full">
+        {editingExpense && (
+          <ExpenseForm
+            members={members}
+            currentMemberId={currentId}
+            initialValues={editingExpense}
+            onSubmit={async () => {}}
+            onUpdate={async (form) => {
+              await updateExpense.mutateAsync({ id: editingExpense.id, form });
+              setEditingExpense(null);
+            }}
+            onCancel={() => setEditingExpense(null)}
+          />
+        )}
       </Modal>
     </div>
   );
